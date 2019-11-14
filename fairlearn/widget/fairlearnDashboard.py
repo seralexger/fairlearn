@@ -7,11 +7,10 @@
 from .fairlearnWidget import FairlearnWidget
 from fairlearn.metrics import group_accuracy_score, group_precision_score,\
     group_recall_score, group_zero_one_loss, group_max_error, group_mean_absolute_error,\
-    group_mean_squared_error, group_median_absolute_error,\
+    group_mean_squared_error, group_mean_squared_log_error, group_median_absolute_error,\
     group_specificity_score, group_miss_rate, group_fallout_rate, group_selection_rate,\
-    group_balanced_root_mean_squared_error, group_mean_overprediction, group_r2_score, \
-    group_mean_underprediction, group_mean_prediction, group_roc_auc_score,\
-    group_root_mean_squared_error
+    group_balanced_root_mean_squared_error, group_mean_overprediction,\
+    group_mean_underprediction, group_mean_prediction
 from IPython.display import display
 from scipy.sparse import issparse
 import copy
@@ -88,37 +87,29 @@ class FairlearnDashboard(object):
                 "model_type": [],
                 "function": group_selection_rate
             },
-            "auc": {
-                "model_type": ["probability"],
-                "function": group_roc_auc_score
-            },
-            "root_mean_squared_error": {
-                "model_type": ["regression", "probability"],
-                "function": group_root_mean_squared_error
-            },
-            "balanced_root_mean_squared_error": {
-                "model_type": ["probability"],
-                "function": group_balanced_root_mean_squared_error
-            },
-            "mean_squared_error": {
-                "model_type": ["regression", "probability"],
-                "function": group_mean_squared_error
-            },
-            "mean_absolute_error": {
-                "model_type": ["regression", "probability"],
-                "function": group_mean_absolute_error
-            },
-            "r2_score": {
-                "model_type": ["regression"],
-                "function": group_r2_score
-            },
             "max_error": {
-                "model_type": [],
+                "model_type": ["regression"],
                 "function": group_max_error
             },
+            "mean_absolute_error": {
+                "model_type": ["regression"],
+                "function": group_mean_absolute_error
+            },
+            "mean_squared_error": {
+                "model_type": ["regression"],
+                "function": group_mean_squared_error
+            },
+            "mean_squared_log_error": {
+                "model_type": ["regression"],
+                "function": group_mean_squared_log_error
+            },
             "median_absolute_error": {
-                "model_type": [],
+                "model_type": ["regression"],
                 "function": group_median_absolute_error
+            },
+            "balanced_root_mean_squared_error": {
+                "model_type": [],
+                "function": group_balanced_root_mean_squared_error
             },
             "overprediction": {
                 "model_type": [],
@@ -138,8 +129,6 @@ class FairlearnDashboard(object):
                                   if "classification" in method[1]["model_type"]]
         regression_methods = [method[0] for method in self._metric_methods.items()
                               if "regression" in method[1]["model_type"]]
-        probability_methods = [method[0] for method in self._metric_methods.items()
-                               if "probability" in method[1]["model_type"]]
 
         dataset = self._sanitize_data_shape(sensitive_features)
         self._predicted_ys = self._convert_to_list(predicted_ys)
@@ -158,8 +147,7 @@ class FairlearnDashboard(object):
             "predicted_ys": self._predicted_ys,
             "dataset": dataset,
             "classification_methods": classification_methods,
-            "regression_methods": regression_methods,
-            "probability_methods": probability_methods
+            "regression_methods": regression_methods
         }
 
         if sensitive_feature_names is not None:

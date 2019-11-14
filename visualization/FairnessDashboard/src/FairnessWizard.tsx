@@ -182,10 +182,8 @@ export class FairnessWizard extends React.PureComponent<IFairnessProps, IWizardS
 
         let accuracyMetrics = fairnessContext.modelMetadata.predictionType === PredictionTypes.binaryClassification ?
             this.props.supportedBinaryClassificationAccuracyKeys.map(key => AccuracyOptions[key]) :
-            (fairnessContext.modelMetadata.predictionType === PredictionTypes.regression ?
-                this.props.supportedRegressionAccuracyKeys.map(key => AccuracyOptions[key]) :
-                this.props.supportedProbabilityAccuracyKeys.map(key => AccuracyOptions[key]))
-        accuracyMetrics = accuracyMetrics.filter(metric => !!metric);
+            this.props.supportedRegressionAccuracyKeys.map(key => AccuracyOptions[key])
+        accuracyMetrics.filter(metric => !!metric);
 
         this.state = {
             accuracyMetrics,
