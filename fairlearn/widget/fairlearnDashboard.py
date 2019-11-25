@@ -7,10 +7,11 @@
 from .fairlearnWidget import FairlearnWidget
 from fairlearn.metrics import group_accuracy_score, group_precision_score,\
     group_recall_score, group_zero_one_loss, group_max_error, group_mean_absolute_error,\
-    group_mean_squared_error, group_mean_squared_log_error, group_median_absolute_error,\
+    group_mean_squared_error, group_median_absolute_error,\
     group_specificity_score, group_miss_rate, group_fallout_rate, group_selection_rate,\
-    group_balanced_root_mean_squared_error, group_mean_overprediction,\
-    group_mean_underprediction, group_mean_prediction
+    group_balanced_root_mean_squared_error, group_mean_overprediction, group_r2_score, \
+    group_mean_underprediction, group_mean_prediction, group_roc_auc_score,\
+    group_root_mean_squared_error
 from IPython.display import display
 from scipy.sparse import issparse
 import copy
@@ -24,7 +25,7 @@ class FairlearnDashboard(object):
     def __init__(
             self, *,
             sensitive_features,
-            true_y, predicted_ys,
+            y_true, y_pred,
             sensitive_feature_names=None,
             is_classifier=None):
 
@@ -34,22 +35,28 @@ class FairlearnDashboard(object):
             these can be from the initial dataset, or reserved from training. Currently only
             categorical features are supported
         :type sensitive_features: numpy.array or list[][] or Pandas Dataframe
-        :param trueY: The true labels for the provided dataset. Will overwrite any set on
+        :param y_true: The true labels for the provided dataset. Will overwrite any set on
             explanation object already
-        :type trueY: numpy.array or list[]
-        :param predicted_ys: Array of output predictions from models to be evaluated
-        :type predicted_ys: numpy.array or list[][]
+        :type y_true: numpy.array or list[]
+        :param y_pred: Array of output predictions from models to be evaluated. Can be a single
+            array of predictions, or a 2D list over multiple models. Can be a dictionary
+            of named model predictions.
+        :type y_pred: numpy.array or list[][] or list[] or dict {string: list[]}
         :param sensitive_feature_names: Feature names
         :type sensitive_feature_names: numpy.array or list[]
         """
         self._widget_instance = FairlearnWidget()
-        if sensitive_features is None or true_y is None or predicted_ys is None:
+        if sensitive_features is None or y_true is None or y_pred is None:
             raise ValueError("Required parameters not provided")
 
         self._metric_methods = {
             "accuracy_score": {
                 "model_type": ["classification"],
                 "function": group_accuracy_score
+            },
+            "balanced_accuracy_score": {
+                "model_type": ["classification"],
+                "function": group_roc_auc_score
             },
             "precision_score": {
                 "model_type": ["classification"],
@@ -87,29 +94,37 @@ class FairlearnDashboard(object):
                 "model_type": [],
                 "function": group_selection_rate
             },
-            "max_error": {
-                "model_type": ["regression"],
-                "function": group_max_error
+            "auc": {
+                "model_type": ["probability"],
+                "function": group_roc_auc_score
             },
-            "mean_absolute_error": {
-                "model_type": ["regression"],
-                "function": group_mean_absolute_error
-            },
-            "mean_squared_error": {
-                "model_type": ["regression"],
-                "function": group_mean_squared_error
-            },
-            "mean_squared_log_error": {
-                "model_type": ["regression"],
-                "function": group_mean_squared_log_error
-            },
-            "median_absolute_error": {
-                "model_type": ["regression"],
-                "function": group_median_absolute_error
+            "root_mean_squared_error": {
+                "model_type": ["regression", "probability"],
+                "function": group_root_mean_squared_error
             },
             "balanced_root_mean_squared_error": {
-                "model_type": [],
+                "model_type": ["probability"],
                 "function": group_balanced_root_mean_squared_error
+            },
+            "mean_squared_error": {
+                "model_type": ["regression", "probability"],
+                "function": group_mean_squared_error
+            },
+            "mean_absolute_error": {
+                "model_type": ["regression", "probability"],
+                "function": group_mean_absolute_error
+            },
+            "r2_score": {
+                "model_type": ["regression"],
+                "function": group_r2_score
+            },
+            "max_error": {
+                "model_type": [],
+                "function": group_max_error
+            },
+            "median_absolute_error": {
+                "model_type": [],
+                "function": group_median_absolute_error
             },
             "overprediction": {
                 "model_type": [],
@@ -129,25 +144,37 @@ class FairlearnDashboard(object):
                                   if "classification" in method[1]["model_type"]]
         regression_methods = [method[0] for method in self._metric_methods.items()
                               if "regression" in method[1]["model_type"]]
+        probability_methods = [method[0] for method in self._metric_methods.items()
+                               if "probability" in method[1]["model_type"]]
 
         dataset = self._sanitize_data_shape(sensitive_features)
-        self._predicted_ys = self._convert_to_list(predicted_ys)
-        if len(np.shape(self._predicted_ys)) == 1:
-            self._predicted_ys = [self._predicted_ys]
-        self._true_y = self._convert_to_list(true_y)
+        model_names = None
+        if isinstance(y_pred, dict):
+            model_names = []
+            self._y_pred = []
+            for k, v in y_pred.items():
+                model_names.append(k)
+                self._y_pred.append(self._convert_to_list(v))
+        else:
+            self._y_pred = self._convert_to_list(y_pred)
+        if len(np.shape(self._y_pred)) == 1:
+            self._y_pred = [self._y_pred]
+        self._y_true = self._convert_to_list(y_true)
 
-        if np.shape(self._true_y)[0] != np.shape(self._predicted_ys)[1]:
+        if np.shape(self._y_true)[0] != np.shape(self._y_pred)[1]:
             raise ValueError("Predicted y does not match true y shape")
 
-        if np.shape(self._true_y)[0] != np.shape(dataset)[0]:
+        if np.shape(self._y_true)[0] != np.shape(dataset)[0]:
             raise ValueError("Sensitive features shape does not match true y shape")
 
         dataArg = {
-            "true_y": self._true_y,
-            "predicted_ys": self._predicted_ys,
+            "true_y": self._y_true,
+            "predicted_ys": self._y_pred,
             "dataset": dataset,
             "classification_methods": classification_methods,
-            "regression_methods": regression_methods
+            "regression_methods": regression_methods,
+            "probability_methods": probability_methods,
+            "model_names": model_names
         }
 
         if sensitive_feature_names is not None:
@@ -175,8 +202,8 @@ class FairlearnDashboard(object):
                         method = self._metric_methods.get(data["metricKey"]).get("function")
                         binVector = data["binVector"]
                         prediction = method(
-                            self._true_y,
-                            self._predicted_ys[data["modelIndex"]],
+                            self._y_true,
+                            self._y_pred[data["modelIndex"]],
                             binVector)
                         response[id] = {
                                 "global": prediction.overall,

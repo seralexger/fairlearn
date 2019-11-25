@@ -2,6 +2,7 @@ import React from 'react';
 import { FairnessWizard } from 'fairlearn-dashboard';
 import { binaryClassifier } from '../__mock-data/binaryClassifier';
 import {regression} from "../__mock-data/regression";
+import { probit } from "../__mock-data/probit";
 
     class App extends React.Component {
       constructor(props) {
@@ -13,7 +14,8 @@ import {regression} from "../__mock-data/regression";
 
       static choices = [
         {label: 'binaryClassifier', data: binaryClassifier},
-        {label: 'regression', data: regression}
+        {label: 'regression', data: regression},
+        {label: "probit", data: probit}
       ]
 
       messages = {
@@ -34,6 +36,7 @@ import {regression} from "../__mock-data/regression";
       generateRandomMetrics(data, signal) {
         const binSize = Math.max(...data.binVector);
         const bins = new Array(binSize + 1).fill(0).map(x => Math.random())
+        bins[2] = undefined
         let promise = new Promise((resolve, reject) => {
           let timeout = setTimeout(() => {resolve({
             global: Math.random(),
@@ -73,16 +76,16 @@ import {regression} from "../__mock-data/regression";
               {App.choices.map((item, index) => <option key={item.label} value={index}>{item.label}</option>)}
             </select>
               <div style={{ width: '80vw', backgroundColor: 'white', margin:'50px auto'}}>
-                  <div style={{ width: '740px'}}>
+                  <div style={{ width: '940px'}}>
                       <FairnessWizard
                         modelInformation={{modelClass: 'blackbox'}}
                         dataSummary={{featureNames: data.featureNames, classNames: data.classNames}}
                         testData={data.augmentedData}
                         predictedY={data.predictedYs}
                         trueY={data.trueY}
-                        supportedBinaryClassificationAccuracyKeys={["accuracy_score", "precision_score", "recall_score", "zero_one_loss"]}
-                        supportedRegressionAccuracyKeys={["mean_absolute_error", "recall_score"]}
-                        supportedPredictionAccuracyKeys={["mean_absolute_error", "recall_score"]}
+                        supportedBinaryClassificationAccuracyKeys={["accuracy_score", "balanced_accuracy_score","precision_score", "recall_score"]}
+                        supportedRegressionAccuracyKeys={["mean_absolute_error", "r2_score", "mean_squared_error", "root_mean_squared_error"]}
+                        supportedProbabilityAccuracyKeys={["auc", "root_mean_squared_error", "balanced_root_mean_squared_error", "r2_score", "mean_squared_error", "mean_absolute_error"]}
                         stringParams={{contextualHelp: this.messages}}
                         requestMetrics={this.generateRandomMetrics.bind(this)}
                         key={new Date()}
