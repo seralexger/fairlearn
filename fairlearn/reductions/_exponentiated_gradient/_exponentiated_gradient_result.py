@@ -6,7 +6,7 @@ class ExponentiatedGradientResult:
     """Class to hold the result of an `ExponentiatedGradient` estimator."""
 
     def __init__(self, best_classifier, best_gap, classifiers, weights, last_t, best_t,
-                 n_oracle_calls):
+                 n_oracle_calls, gammas, error_t, gamma_t, weight_set):
         self._best_classifier = best_classifier
         self._best_gap = best_gap
         self._classifiers = classifiers
@@ -14,6 +14,10 @@ class ExponentiatedGradientResult:
         self._last_t = last_t
         self._best_t = best_t
         self._n_oracle_calls = n_oracle_calls
+        self._gammas = gammas
+        self._error_t = error_t
+        self._gamma_t = gamma_t
+        self._weight_set = weight_set
 
     @property
     def best_classifier(self):
@@ -60,6 +64,26 @@ class ExponentiatedGradientResult:
         """Return the number of times the estimator was called."""
         return self._n_oracle_calls
 
+    @property
+    def gammas(self):
+        """TODO"""
+        return self._gammas
+    
+    @property
+    def error_t(self):
+        """TODO"""
+        return self._error_t
+
+    @property
+    def gamma_t(self):
+        """TODO"""
+        return self._gamma_t
+
+    @property
+    def weight_set(self):
+        """TODO"""
+        return self._weight_set
+
     def _as_dict(self):
         return {
             "best_classifier": self._best_classifier,
@@ -68,5 +92,9 @@ class ExponentiatedGradientResult:
             "weights": self._weights,
             "last_t": self._last_t,
             "best_t": self._best_t,
-            "n_oracle_calls": self._n_oracle_calls
+            "n_oracle_calls": self._n_oracle_calls,
+            "gammas": self._gammas,
+            "error_t": self._error_t,
+            "gamma_t": self._gamma_t,
+            "weight_set": self._weight_set
         }

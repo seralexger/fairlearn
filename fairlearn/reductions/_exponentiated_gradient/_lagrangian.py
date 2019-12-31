@@ -53,6 +53,7 @@ class _Lagrangian:
         self.n_oracle_calls = 0
         self.last_linprog_n_hs = 0
         self.last_linprog_result = None
+        self.weight_set = pd.DataFrame()
 
     def _eval_from_error_gamma(self, error, gamma, lambda_vec):
         """Return the value of the Lagrangian.
@@ -163,6 +164,7 @@ class _Lagrangian:
             h_idx = len(self.hs)
             self.hs.at[h_idx] = h
             self.classifiers.at[h_idx] = classifier
+            self.weight_set[h_idx] = redW
             self.errors.at[h_idx] = h_error
             self.gammas[h_idx] = h_gamma
             self.lambdas[h_idx] = lambda_vec.copy()

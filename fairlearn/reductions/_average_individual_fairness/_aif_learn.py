@@ -13,11 +13,12 @@ import argparse
 import functools
 import numpy as np
 import pandas as pd
-import classred as red
 import clean_data as parser1
 import pickle
 from sklearn import linear_model
 from scipy.optimize import fsolve
+
+from fairlearn.reductions import ExponentiatedGradient
 
 print = functools.partial(print, flush=True)
 
@@ -114,17 +115,17 @@ class err_rate():
 
 
 
-def weighted_predictions(res_tuple, x):
+def weighted_predictions(expgrad_result, x):
     """
-    Given res_tuple from expgrad, compute the weighted predictions
+    Given expgrad_result, compute the weighted predictions
     over the dataset x
     """
-    classifiers = res_tuple.classifiers
-    weights = res_tuple.weights  # weights over classifiers
+    classifiers = expgrad_result.classifiers
+    weights = expgrad_result.weights  # weights over classifiers
     weighted_preds = pd.DataFrame(columns = classifiers.columns)
     for col in classifiers.columns:
         preds = classifiers[col].apply(lambda h: h.predict(x))
-        weighted_preds[col] =  preds[weights.index].dot(weights)
+        weighted_preds[col] = preds[weights.index].dot(weights)
     return weighted_preds
 
 
@@ -160,7 +161,6 @@ def run_aif_learn(dataset, alpha = 0.1, nu = 0.001, max_iter = 1500):
     T_denominator = nu**2
     T = T_numerator/T_denominator
     T = max(1, int(T))
-    eta = nu / B
     #################################################
     
     ############### Define the learning oracle and the constraints ###################
@@ -169,12 +169,12 @@ def run_aif_learn(dataset, alpha = 0.1, nu = 0.001, max_iter = 1500):
     ##################################################################################
     
     ################ Run the algorithm ##################
-    res_tuple = red.expgrad(x, y, learner, cons=constraints, alpha = alpha, 
-                            B=B, T=T, nu = nu, debug=True, max_iter=max_iter)          
+    expgrad = ExponentiatedGradient(learner, constraints=constraints, T=T, nu=nu)
+    expgrad.fit(x, y)
     #####################################################
 
 
-    weighted_preds = weighted_predictions(res_tuple, x)
+    weighted_preds = weighted_predictions(expgrad._expgrad_result, x)
     
     err_problem = {} # error of each problem
     for col in y.columns:
@@ -187,33 +187,41 @@ def run_aif_learn(dataset, alpha = 0.1, nu = 0.001, max_iter = 1500):
     err_matrix = (y - weighted_preds).abs()
     err = err_matrix.values.mean() # overall error rate
     
-    gammahat = res_tuple.phis[res_tuple.weights.index].dot(res_tuple.weights) # gammahat
+    gammahat = expgrad._expgrad_result.gammas[expgrad._expgrad_result.weights.index].dot(expgrad._expgrad_result.weights) # gammahat
     
     dummy_list = list(err_individual.values())
     for i in range(len(dummy_list)):
         dummy_list[i] = abs(dummy_list[i] - gammahat)
     unf = max(dummy_list) # unfairness with respect to gammahat
-    unf_prime = max(err_individual.values()) - min(err_individual.values()) # unfairness: maximum disparity between individual error rates
+    unf_prime = max(err_individual.values()) - min(err_individual.values())  # unfairness: maximum disparity between individual error rates
 
-    error_t = res_tuple.error_t # trajectory of error
-    gamma_t = res_tuple.gamma_t # trajectory of unfairness
+    error_t = expgrad._expgrad_result.error_t  # trajectory of error
+    gamma_t = expgrad._expgrad_result.gamma_t  # trajectory of unfairness
 
-    weight_set = res_tuple.weight_set # set of weights to define the learned mapping, use for new learning problems
+    weight_set = expgrad._expgrad_result.weight_set  # set of weights to define the learned mapping, use for new learning problems
     
-    weights = res_tuple.weights  # weights over classifiers
+    weights = expgrad._expgrad_result.weights  # weights over classifiers
 
-    d = {'err_matrix': err_matrix, 'err' :err , 'unfairness' : unf, 'unfairness_prime': unf_prime, 'alpha' : alpha, 'err_problem': err_problem , 
-            'err_individual': err_individual, 'gammahat': gammahat, 'error_t': error_t, 'gamma_t':gamma_t,
-            'weight_set': weight_set, 'weights': weights, 'individuals': x}
-    d_print = {'err' :err , 'gammahat': gammahat, 'unfairness' : unf, 'unfairness_prime': unf_prime, 'alpha' : alpha}    
+    d = {'err_matrix': err_matrix,
+         'err': err,
+         'unfairness': unf,
+         'unfairness_prime': unf_prime,
+         'alpha': alpha,
+         'err_problem': err_problem, 
+         'err_individual': err_individual,
+         'gammahat': gammahat,
+         'error_t': error_t,
+         'gamma_t': gamma_t,
+         'weight_set': weight_set,
+         'weights': weights,
+         'individuals': x}
+    d_print = {'err': err,
+               'gammahat': gammahat,
+               'unfairness': unf,
+               'unfairness_prime': unf_prime,
+               'alpha': alpha}    
     print(d_print)
     return d
-
-
-
-
-
-
 
 
 data_list = ['communities', 'synthetic'] # accepted data sets, add as needed

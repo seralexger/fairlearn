@@ -89,6 +89,8 @@ class ExponentiatedGradient(Reduction):
         gaps_EG = []
         gaps = []
         Qs = []
+        error_t = []
+        gamma_t = []
 
         last_regret_checked = _REGRET_CHECK_START_T
         last_gap = np.PINF
@@ -137,6 +139,14 @@ class ExponentiatedGradient(Reduction):
                 Qs.append(Q_LP)
                 gaps.append(gap_LP)
 
+            weights = Qs[t]
+            classifiers = lagrangian.classifiers
+            for index in classifiers.index:
+                if not weights.index.contains(index):
+                    weights.at[index] = 0.0
+            error_t.append(lagrangian.errors.dot(weights))
+            gamma_t.append(lagrangian.gammas.dot(weights).max())
+
             logger.debug("%seta=%.6f, L_low=%.3f, L=%.3f, L_high=%.3f"
                          ", gap=%.6f, disp=%.3f, err=%.3f, gap_LP=%.6f",
                          _INDENTATION, eta, result_EG.L_low,
@@ -160,7 +170,8 @@ class ExponentiatedGradient(Reduction):
             # update theta based on learning rate
             theta += eta * (gamma - self._eps)
 
-        self._expgrad_result = self._format_results(gaps, Qs, lagrangian, B, eta_min)
+        self._expgrad_result = self._format_results(gaps, Qs, lagrangian, B, eta_min, error_t,
+                                                    gamma_t)
 
         self._best_classifier = self._expgrad_result._best_classifier
         self._classifiers = self._expgrad_result._classifiers
@@ -192,7 +203,7 @@ class ExponentiatedGradient(Reduction):
         positive_probs = self._best_classifier(X)
         return np.concatenate((1-positive_probs, positive_probs), axis=1)
 
-    def _format_results(self, gaps, Qs, lagrangian, B, eta_min):
+    def _format_results(self, gaps, Qs, lagrangian, B, eta_min, error_t, gamma_t):
         gaps_series = pd.Series(gaps)
         gaps_best = gaps_series[gaps_series <= gaps_series.min() + _PRECISION]
         best_t = gaps_best.index[-1]
@@ -214,7 +225,11 @@ class ExponentiatedGradient(Reduction):
             weights,
             last_t,
             best_t,
-            lagrangian.n_oracle_calls)
+            lagrangian.n_oracle_calls,
+            lagrangian.gammas,
+            error_t,
+            gamma_t,
+            lagrangian.weight_set)
 
         logger.debug("...eps=%.3f, B=%.1f, nu=%.6f, T=%d, eta_min=%.6f",
                      self._eps, B, self._nu, self._T, eta_min)
