@@ -76,6 +76,7 @@ class AverageIndividualFairnessLearner:
         self._alpha = alpha
         self._nu = nu
         self._max_iter = max_iter
+        self._expgrad = None
 
     def fit(self, X, y):
         # TODO Remove this dataset specific code
@@ -108,11 +109,11 @@ class AverageIndividualFairnessLearner:
         ##################################################################################
 
         ################ Run the algorithm ##################
-        expgrad = ExponentiatedGradient(learner, constraints=constraints, T=T, nu=self._nu)
-        expgrad.fit(X, y)
+        self._expgrad = ExponentiatedGradient(learner, constraints=constraints, T=T, nu=self._nu)
+        self._expgrad.fit(X, y)
         #####################################################
 
-        weighted_preds = weighted_predictions(expgrad._expgrad_result, X)
+        weighted_preds = weighted_predictions(self._expgrad._expgrad_result, X)
 
         err_problem = {}  # error of each problem
         for col in y.columns:
@@ -125,8 +126,8 @@ class AverageIndividualFairnessLearner:
         err_matrix = (y - weighted_preds).abs()
         err = err_matrix.values.mean()  # overall error rate
 
-        gammahat = expgrad._expgrad_result.gammas[expgrad._expgrad_result.weights.index].dot(
-            expgrad._expgrad_result.weights)
+        gammahat = self._expgrad._expgrad_result.gammas[self._expgrad._expgrad_result.weights.index].dot(
+            self._expgrad._expgrad_result.weights)
 
         dummy_list = list(err_individual.values())
         for i in range(len(dummy_list)):
@@ -135,13 +136,13 @@ class AverageIndividualFairnessLearner:
         # unfairness: maximum disparity between individual error rates
         unf_prime = max(err_individual.values()) - min(err_individual.values())
 
-        error_t = expgrad._expgrad_result.error_t  # trajectory of error
-        gamma_t = expgrad._expgrad_result.gamma_t  # trajectory of unfairness
+        error_t = self._expgrad._expgrad_result.error_t  # trajectory of error
+        gamma_t = self._expgrad._expgrad_result.gamma_t  # trajectory of unfairness
 
         # set of weights to define the learned mapping, use for new learning problems
-        weight_set = expgrad._expgrad_result.weight_set
+        weight_set = self._expgrad._expgrad_result.weight_set
 
-        weights = expgrad._expgrad_result.weights  # weights over classifiers
+        weights = self._expgrad._expgrad_result.weights  # weights over classifiers
 
         # TODO create result object
         d = {'err_matrix': err_matrix,
@@ -165,5 +166,4 @@ class AverageIndividualFairnessLearner:
         print(d_print)
 
     def predict(self, X):
-        pass
-        # TODO: figure out how to do predictions
+        return self._expgrad.predict(X)
