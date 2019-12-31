@@ -15,37 +15,18 @@ import numpy as np
 import pandas as pd
 import clean_data as parser1
 import pickle
-from sklearn import linear_model
 from scipy.optimize import fsolve
 
 from fairlearn.reductions import ExponentiatedGradient
+from fairlearn.reductions._regression_learner import RegressionLearner
 from fairlearn.reductions._moments.average_individual_fairness import err_rate
 
 print = functools.partial(print, flush=True)
 
 
-class RegressionLearner:
-    def __init__(self):
-        self.weights = None
-
-    def fit(self, X, Y, W):
-        cost_vec0 = Y * W  # cost vector for predicting zero
-        cost_vec1 = (1 - Y) * W  # cost vector for predicting one
-        self.reg0 = linear_model.LinearRegression()
-        self.reg0.fit(X, cost_vec0)
-        self.reg1 = linear_model.LinearRegression()
-        self.reg1.fit(X, cost_vec1)
-
-    def predict(self, X):
-        pred0 = self.reg0.predict(X)
-        pred1 = self.reg1.predict(X)
-        return 1*(pred1 < pred0)
-
-
 def weighted_predictions(expgrad_result, x):
     """
-    Given expgrad_result, compute the weighted predictions
-    over the dataset x
+    Given expgrad_result, compute the weighted predictions over the dataset X
     """
     classifiers = expgrad_result.classifiers
     weights = expgrad_result.weights  # weights over classifiers
@@ -56,75 +37,62 @@ def weighted_predictions(expgrad_result, x):
     return weighted_preds
 
 
-def _binarize_attribute(a):
+def _binarize_attribute(Y):
     """
-    given a set of attributes; binarize them
+    Binarizes the values for each column.
     """
-    for col in a.columns:
-        if len(a[col].unique()) > 2:  # hack: identify numeric features
-            sens_mean = np.mean(a[col])
-            a[col] = 1 * (a[col] > sens_mean)
+    for column in Y.columns:
+        if len(Y[column].unique()) > 2:  # hack: identify numeric features
+            Y[column] = 1 * (Y[column] > np.mean(Y[column]))
 
 
 class AverageIndividualFairnessLearner:
-    """
-
+    """ TODO
     :param alpha: the fairness parameter
     """
-
     def __init__(self, alpha=0.1, nu=0.001, max_iter=1500):
+        # Constraints are fixed here and will be created in the fit method.
+        # To achieve average individual fairness we need to know n which only happens in fit.
+        self._estimator = RegressionLearner()
         self._alpha = alpha
         self._nu = nu
         self._max_iter = max_iter
         self._expgrad = None
 
     def fit(self, X, y):
-        # TODO Remove this dataset specific code
+        """TODO
         """
-        if dataset == 'communities':
-            x, y = parser1.clean_communities()
-        elif dataset == 'synthetic':
-            x, y = parser1.clean_synthetic()
-        else:
-            raise Exception('Dataset not in range!')
-        """
-        print(x.columns)
+        print(X.columns)
         print(y.columns)
 
         _binarize_attribute(y)
 
-        ############ setting some parameters ############
         n = X.shape[0]
         m = y.shape[1]
         B = 1/self._alpha
-        T_numerator = (B**2) * np.log(n)
-        T_denominator = self._nu**2
-        T = T_numerator/T_denominator
-        T = max(1, int(T))
-        #################################################
+        T = max(1, int((B**2) * np.log(n)/self._nu**2))
 
-        ############### Define the learning oracle and the constraints ###################
-        learner = RegressionLearner()
         constraints = err_rate(range(n))
-        ##################################################################################
 
-        ################ Run the algorithm ##################
-        self._expgrad = ExponentiatedGradient(learner, constraints=constraints, T=T, nu=self._nu)
+        self._expgrad = ExponentiatedGradient(self._estimator, constraints=constraints, T=T,
+                                              nu=self._nu)
         self._expgrad.fit(X, y)
-        #####################################################
 
         weighted_preds = weighted_predictions(self._expgrad._expgrad_result, X)
 
-        err_problem = {}  # error of each problem
+        # error of each problem
+        err_problem = {}
         for col in y.columns:
             err_problem[col] = sum(np.abs(y[col] - weighted_preds[col])) / n
 
-        err_individual = {}  # error of each individual
+        # error of each individual
+        err_individual = {}
         for i in range(n):
             err_individual[i] = sum(np.abs(y.loc[i] - weighted_preds.loc[i])) / m
 
         err_matrix = (y - weighted_preds).abs()
-        err = err_matrix.values.mean()  # overall error rate
+        # overall error rate
+        err = err_matrix.values.mean()
 
         gammahat = self._expgrad._expgrad_result.gammas[self._expgrad._expgrad_result.weights.index].dot(
             self._expgrad._expgrad_result.weights)
@@ -132,17 +100,21 @@ class AverageIndividualFairnessLearner:
         dummy_list = list(err_individual.values())
         for i in range(len(dummy_list)):
             dummy_list[i] = abs(dummy_list[i] - gammahat)
-        unf = max(dummy_list)  # unfairness with respect to gammahat
+        # unfairness with respect to gammahat
+        unf = max(dummy_list)
         # unfairness: maximum disparity between individual error rates
         unf_prime = max(err_individual.values()) - min(err_individual.values())
 
-        error_t = self._expgrad._expgrad_result.error_t  # trajectory of error
-        gamma_t = self._expgrad._expgrad_result.gamma_t  # trajectory of unfairness
+        # trajectory of error
+        error_t = self._expgrad._expgrad_result.error_t
+        # trajectory of unfairness
+        gamma_t = self._expgrad._expgrad_result.gamma_t
 
         # set of weights to define the learned mapping, use for new learning problems
         weight_set = self._expgrad._expgrad_result.weight_set
 
-        weights = self._expgrad._expgrad_result.weights  # weights over classifiers
+        # weights over classifiers
+        weights = self._expgrad._expgrad_result.weights
 
         # TODO create result object
         d = {'err_matrix': err_matrix,
@@ -166,4 +138,6 @@ class AverageIndividualFairnessLearner:
         print(d_print)
 
     def predict(self, X):
-        return self._expgrad.predict(X)
+        """TODO
+        """
+        return weighted_predictions(self._expgrad._expgrad_result, X)

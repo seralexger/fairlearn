@@ -1,7 +1,10 @@
 """Constraints for individual fairness.
 """
 
+import numpy as np
 import pandas as pd
+
+from fairlearn.reductions._regression_learner import RegressionLearner
 
 
 class err():
