@@ -1,3 +1,9 @@
+""" Average Individual Fairness learning algorithm based on the paper
+`Average Individual Fairness: Algorithms, Generalization and Experiments" by Michael Kearns,
+Aaron Roth and Saeed Sharifi-Malvajerdi <https://arxiv.org/abs/1905.10607>_`
+Original code from https://github.com/SaeedSharifiMa/AIF/blob/master/ and subsequently adapted.
+"""
+
 # documentation:
 # implementation of AIF-Learn with a linear threshold oracle
 
