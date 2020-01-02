@@ -8,9 +8,9 @@ class RegressionLearner:
     def __init__(self):
         self.weights = None
 
-    def fit(self, X, Y, W):
-        cost_vec0 = Y * W  # cost vector for predicting zero
-        cost_vec1 = (1 - Y) * W  # cost vector for predicting one
+    def fit(self, X, Y, sample_weight):
+        cost_vec0 = Y * sample_weight  # cost vector for predicting zero
+        cost_vec1 = (1 - Y) * sample_weight  # cost vector for predicting one
         self.reg0 = linear_model.LinearRegression()
         self.reg0.fit(X, cost_vec0)
         self.reg1 = linear_model.LinearRegression()

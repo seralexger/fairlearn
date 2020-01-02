@@ -13,6 +13,7 @@ from ._reduction import Reduction  # noqa: F401
 from ._exponentiated_gradient import ExponentiatedGradient  # noqa: F401
 from ._exponentiated_gradient import ExponentiatedGradientResult  # noqa: F401
 from ._grid_search import GridSearch, GridSearchResult  # noqa: F401
+from ._average_individual_fairness import AverageIndividualFairnessLearner  # noqa: F401
 from ._moments import AbsoluteLoss, Moment, ConditionalSelectionRate  # noqa: F401
 from ._moments import DemographicParity, EqualizedOdds, ErrorRate   # noqa: F401
 from ._moments import GroupLossMoment, SquareLoss, ZeroOneLoss  # noqa: F401
@@ -28,6 +29,10 @@ _grid_search = [
     "GridSearchResult"
 ]
 
+_average_individual_fairness = [
+    "AverageIndividualFairnessLearner"
+]
+
 _moments = [
     "AbsoluteLoss",
     "Moment",
@@ -39,8 +44,7 @@ _moments = [
     "GroupLossMoment",
     "LossMoment",
     "SquareLoss",
-    "ZeroOneLoss",
-    
+    "ZeroOneLoss"
 ]
 
-__all__ = ["Reduction"] + _exponentiated_gradient + _grid_search + _moments
+__all__ = ["Reduction"] + _exponentiated_gradient + _grid_search + _average_individual_fairness + _moments

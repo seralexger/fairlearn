@@ -9,6 +9,8 @@ import scipy.optimize as opt
 
 from ._constants import _PRECISION, _INDENTATION, _LINE
 
+from fairlearn.reductions._moments.average_individual_fairness import err_rate
+
 logger = logging.getLogger(__name__)
 
 
@@ -55,6 +57,14 @@ class _Lagrangian:
         self.last_linprog_result = None
         self.weight_set = pd.DataFrame()
 
+        # TODO remove this weird hack to get column names
+        if type(y) == pd.DataFrame:
+            self.labels = y.columns
+        elif type(y) == pd.Series:
+            self.labels = y.to_frame().columns
+        else:
+            self.labels = pd.DataFrame(y).columns
+
     def _eval_from_error_gamma(self, error, gamma, lambda_vec):
         """Return the value of the Lagrangian.
 
@@ -81,6 +91,7 @@ class _Lagrangian:
             `L_high` is the value of the Lagrangian under the best response of the lambda player,
             `gamma` is the vector of constraint violations, and `error` is the empirical error
         """
+        # TODO changes required here?
         if callable(h):
             error = self.obj.gamma(h)[0]
             gamma = self.constraints.gamma(h)
@@ -137,10 +148,14 @@ class _Lagrangian:
         Returns the classifier that solves the best-response problem for
         the vector of Lagrange multipliers `lambda_vec`.
         """
-        signed_weights = self.obj.signed_weights() + self.constraints.signed_weights(lambda_vec)
+        # TODO if we want to work with multiple classification problems then this needs some change
+        signed_weights_constraints = self.constraints.signed_weights(lambda_vec)
+        signed_weights_constraints.index = signed_weights_constraints.index.droplevel(1)
+        signed_weights = self.obj.signed_weights() + signed_weights_constraints
         redY = 1 * (signed_weights > 0)
         redW = signed_weights.abs()
         redW = self.n * redW / redW.sum()
+        phi = 1*(np.sum(signed_weights) > 0)
 
         classifier = pickle.loads(self.pickled_estimator)
         classifier.fit(self.X, redY, sample_weight=redW)
@@ -148,7 +163,15 @@ class _Lagrangian:
 
         def h(X): return classifier.predict(X)
         h_error = self.obj.gamma(h)[0]
-        h_gamma = self.constraints.gamma(h)
+
+        # AIF works with multiple classification problems and therefore expects multiple
+        # classifiers. This is a hack and should be done properly.
+        if type(self.constraints) is err_rate:
+            classifiers = pd.DataFrame(columns=self.labels)
+            classifiers.loc[0, self.labels[0]] = classifier
+            h_gamma = self.constraints.gamma(classifiers, phi=phi)
+        else:
+            h_gamma = self.constraints.gamma(h)
         h_value = h_error + h_gamma.dot(lambda_vec)
 
         if not self.hs.empty:

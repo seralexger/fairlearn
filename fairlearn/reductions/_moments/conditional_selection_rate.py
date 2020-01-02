@@ -50,7 +50,7 @@ class ConditionalSelectionRate(ClassificationMoment):
                 self.neg_basis_present.at[i] = True
                 i += 1
 
-    def gamma(self, predictor):
+    def gamma(self, predictor, **kwargs):
         """Calculate the degree to which constraints are currently violated by the predictor."""
         pred = predictor(self.X)
         self.tags[_PREDICTION] = pred

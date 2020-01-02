@@ -95,7 +95,7 @@ class ExponentiatedGradient(Reduction):
         last_regret_checked = _REGRET_CHECK_START_T
         last_gap = np.PINF
         for t in range(0, self._T):
-            logger.debug("...iter=%03d", t)
+            logger.info("...iter=%03d", t)
 
             # set lambdas for every constraint
             lambda_vec = B * np.exp(theta) / (1 + np.exp(theta).sum())

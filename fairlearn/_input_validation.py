@@ -14,25 +14,27 @@ _KW_SENSITIVE_FEATURES = "sensitive_features"
 
 
 def _validate_and_reformat_reductions_input(X, y, enforce_binary_sensitive_feature=False,
-                                            **kwargs):
+                                            sensitive_features_required=True, **kwargs):
     if X is None:
         raise ValueError(_MESSAGE_X_NONE)
 
     if y is None:
         raise ValueError(_MESSAGE_Y_NONE)
 
-    if _KW_SENSITIVE_FEATURES not in kwargs:
-        msg = "Must specify {0} (for now)".format(_KW_SENSITIVE_FEATURES)
-        raise RuntimeError(msg)
+    sensitive_features_vector = None
+    if sensitive_features_required:
+        if _KW_SENSITIVE_FEATURES not in kwargs:
+            msg = "Must specify {0} (for now)".format(_KW_SENSITIVE_FEATURES)
+            raise RuntimeError(msg)
 
-    # Extract the target attribute
-    sensitive_features_vector = _make_vector(kwargs[_KW_SENSITIVE_FEATURES],
-                                             _KW_SENSITIVE_FEATURES)
+        # Extract the target attribute
+        sensitive_features_vector = _make_vector(kwargs[_KW_SENSITIVE_FEATURES],
+                                                 _KW_SENSITIVE_FEATURES)
 
-    if enforce_binary_sensitive_feature:
-        unique_labels = np.unique(sensitive_features_vector)
-        if len(unique_labels) > 2:
-            raise RuntimeError("Sensitive features contain more than two unique values")
+        if enforce_binary_sensitive_feature:
+            unique_labels = np.unique(sensitive_features_vector)
+            if len(unique_labels) > 2:
+                raise RuntimeError("Sensitive features contain more than two unique values")
 
     # Extract the Y values
     y_vector = _make_vector(y, "y")
@@ -40,7 +42,7 @@ def _validate_and_reformat_reductions_input(X, y, enforce_binary_sensitive_featu
     X_rows, _ = _get_matrix_shape(X, "X")
     if X_rows != y_vector.shape[0]:
         raise RuntimeError(_MESSAGE_X_Y_ROWS)
-    if X_rows != sensitive_features_vector.shape[0]:
+    if sensitive_features_required and X_rows != sensitive_features_vector.shape[0]:
         raise RuntimeError(_MESSAGE_X_SENSITIVE_ROWS)
 
     return pd.DataFrame(X), y_vector, sensitive_features_vector

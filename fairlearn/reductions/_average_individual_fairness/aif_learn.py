@@ -9,13 +9,9 @@ Original code from https://github.com/SaeedSharifiMa/AIF/blob/master/ and subseq
 
 
 from __future__ import print_function
-import argparse
 import functools
 import numpy as np
 import pandas as pd
-import clean_data as parser1
-import pickle
-from scipy.optimize import fsolve
 
 from fairlearn.reductions import ExponentiatedGradient
 from fairlearn.reductions._regression_learner import RegressionLearner
@@ -41,14 +37,23 @@ def _binarize_attribute(Y):
     """
     Binarizes the values for each column.
     """
+    if len(Y.shape) == 1 or Y.shape[1] == 1:
+        _binarize_column(Y)
+        return
+    
     for column in Y.columns:
-        if len(Y[column].unique()) > 2:  # hack: identify numeric features
-            Y[column] = 1 * (Y[column] > np.mean(Y[column]))
+        _binarize_column(Y[column])
+
+
+def _binarize_column(y):
+    if len(y.unique()) > 2:  # hack: identify numeric features
+        y = 1 * (y > np.mean(y))
 
 
 class AverageIndividualFairnessLearner:
     """ TODO
-    :param alpha: the fairness parameter
+    :param alpha: the fairness parameter, called `eps` in ExponentiatedGradient
+    :type alpha: float
     """
     def __init__(self, alpha=0.1, nu=0.001, max_iter=1500):
         # Constraints are fixed here and will be created in the fit method.
@@ -63,20 +68,29 @@ class AverageIndividualFairnessLearner:
         """TODO
         """
         print(X.columns)
-        print(y.columns)
+        print(y.shape)
+
+        if len(y.shape) > 1 and y.shape[1] > 1:
+            raise RuntimeError("AverageIndividualFairnessLearner at this point only supports "
+                               "one-dimensional pandas.DataFrames, pandas.Series, one-dimensional"
+                               " numpy.ndarrays and lists for the y argument.")
 
         _binarize_attribute(y)
 
         n = X.shape[0]
-        m = y.shape[1]
+
+        if len(y.shape) == 1:
+            m = 1
+        else:
+            m = y.shape[1]
         B = 1/self._alpha
         T = max(1, int((B**2) * np.log(n)/self._nu**2))
 
         constraints = err_rate(range(n))
 
         self._expgrad = ExponentiatedGradient(self._estimator, constraints=constraints, T=T,
-                                              nu=self._nu)
-        self._expgrad.fit(X, y)
+                                              nu=self._nu, eps=self._alpha)
+        self._expgrad.fit(X, y, sensitive_features_required=False)
 
         weighted_preds = weighted_predictions(self._expgrad._expgrad_result, X)
 

@@ -16,7 +16,7 @@ class ErrorRate(ClassificationMoment):
         super().load_data(X, y, **kwargs)
         self.index = [_ALL]
 
-    def gamma(self, predictor):
+    def gamma(self, predictor, **kwargs):
         """Return the gamma values for the given predictor."""
         pred = predictor(self.X)
         error = pd.Series(data=(self.tags[_LABEL] - pred).abs().mean(),

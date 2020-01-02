@@ -11,6 +11,7 @@ from .conditional_selection_rate import DemographicParity, EqualizedOdds  # noqa
 from .error_rate import ErrorRate   # noqa: F401
 from .bounded_group_loss import GroupLossMoment   # noqa: F401
 from .bounded_group_loss import SquareLoss, AbsoluteLoss, ZeroOneLoss  # noqa: F401
+from .average_individual_fairness import err_rate
 
 __all__ = [
     "AbsoluteLoss",
@@ -23,5 +24,6 @@ __all__ = [
     "GroupLossMoment",
     "LossMoment",
     "SquareLoss",
-    "ZeroOneLoss"
+    "ZeroOneLoss",
+    "err_rate"  # TODO rename
 ]

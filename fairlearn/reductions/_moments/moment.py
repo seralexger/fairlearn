@@ -40,7 +40,7 @@ class Moment:
         self.data_loaded = True
         self._gamma_descr = None
 
-    def gamma(self, predictor):  # noqa: D102
+    def gamma(self, predictor, **kwargs):  # noqa: D102
         raise NotImplementedError()
 
     def project_lambda(self, lambda_vec):  # noqa: D102
