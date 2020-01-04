@@ -46,7 +46,7 @@ def _binarize_attribute(Y):
 
 
 def _binarize_column(y):
-    if len(y.unique()) > 2:  # hack: identify numeric features
+    if len(np.unique(y)) > 2:  # hack: identify numeric features
         y = 1 * (y > np.mean(y))
 
 
@@ -67,9 +67,6 @@ class AverageIndividualFairnessLearner:
     def fit(self, X, y):
         """TODO
         """
-        print(X.columns)
-        print(y.shape)
-
         if len(y.shape) > 1 and y.shape[1] > 1:
             raise RuntimeError("AverageIndividualFairnessLearner at this point only supports "
                                "one-dimensional pandas.DataFrames, pandas.Series, one-dimensional"

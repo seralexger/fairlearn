@@ -18,6 +18,8 @@ from ._moments import AbsoluteLoss, Moment, ConditionalSelectionRate  # noqa: F4
 from ._moments import DemographicParity, EqualizedOdds, ErrorRate   # noqa: F401
 from ._moments import GroupLossMoment, SquareLoss, ZeroOneLoss  # noqa: F401
 from ._moments import ClassificationMoment, LossMoment  # noqa: F401
+from ._moments import err_rate  # noqa: F401
+
 
 _exponentiated_gradient = [
     "ExponentiatedGradient",
@@ -44,7 +46,8 @@ _moments = [
     "GroupLossMoment",
     "LossMoment",
     "SquareLoss",
-    "ZeroOneLoss"
+    "ZeroOneLoss",
+    "err_rate"
 ]
 
 __all__ = ["Reduction"] + _exponentiated_gradient + _grid_search + _average_individual_fairness + _moments

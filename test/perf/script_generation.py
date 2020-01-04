@@ -6,6 +6,9 @@ import os
 from fairlearn.postprocessing import ThresholdOptimizer
 from fairlearn.reductions import ExponentiatedGradient, GridSearch
 
+from constants import EXPONENTIATED_GRADIENT, THRESHOLD_OPTIMIZER, GRID_SEARCH, \
+    AVERAGE_INDIVIDUAL_FAIRNESS_LEARNER
+
 
 def generate_script(request, perf_test_configuration, script_name, script_directory):
     if not os.path.exists(script_directory):
@@ -32,7 +35,7 @@ def add_imports(script_lines):
     script_lines.append('from time import time')
     script_lines.append('from tempeh.configurations import models, datasets')
     script_lines.append('from fairlearn.postprocessing import ThresholdOptimizer')
-    script_lines.append('from fairlearn.reductions import ExponentiatedGradient, GridSearch')
+    script_lines.append('from fairlearn.reductions import {}, {}, {}'.format(EXPONENTIATED_GRADIENT, GRID_SEARCH, AVERAGE_INDIVIDUAL_FAIRNESS_LEARNER))
     script_lines.append('from fairlearn.reductions import DemographicParity, EqualizedOdds')
     script_lines.append('from azureml.core.run import Run')
 
@@ -62,6 +65,9 @@ def add_dataset_setup(script_lines, perf_test_configuration):
         script_lines.append('sensitive_features_train, sensitive_features_test = dataset.get_sensitive_features("race")')
         script_lines.append('y_train = y_train.astype(int)')
         script_lines.append('y_test = y_test.astype(int)')
+    elif perf_test_configuration.dataset == "communities_uci":
+        # using this only with average individual fairness right now, so no sensitive features required.
+        pass
     else:
         raise ValueError("Sensitive features unknown for dataset {}"
                          .format(perf_test_configuration.dataset))
@@ -76,24 +82,33 @@ def add_unconstrained_estimator_fitting(script_lines, perf_test_configuration):
 
 
 def add_mitigation(script_lines, perf_test_configuration):
-    if perf_test_configuration.mitigator == ThresholdOptimizer.__name__:
-        script_lines.append('mitigator = ThresholdOptimizer('
+    requires_sensitive_features = True
+    if perf_test_configuration.mitigator == THRESHOLD_OPTIMIZER:
+        script_lines.append('mitigator = {}('.format(THRESHOLD_OPTIMIZER) +
                             'unconstrained_predictor=unconstrained_predictor, '
                             'constraints="{}")'.format(perf_test_configuration.disparity_metric))
-    elif perf_test_configuration.mitigator == ExponentiatedGradient.__name__:
-        script_lines.append('mitigator = ExponentiatedGradient('
+    elif perf_test_configuration.mitigator == EXPONENTIATED_GRADIENT:
+        script_lines.append('mitigator = {}('.format(EXPONENTIATED_GRADIENT) +
                             'estimator=estimator, '
                             'constraints={}())'.format(perf_test_configuration.disparity_metric))
-    elif perf_test_configuration.mitigator == GridSearch.__name__:
-        script_lines.append('mitigator = GridSearch(estimator=estimator, '
+    elif perf_test_configuration.mitigator == GRID_SEARCH:
+        script_lines.append('mitigator = {}(estimator=estimator, '.format(GRID_SEARCH) +
                             'constraints={}())'.format(perf_test_configuration.disparity_metric))
+    elif perf_test_configuration.mitigator == AVERAGE_INDIVIDUAL_FAIRNESS_LEARNER:
+        requires_sensitive_features = False
+        script_lines.append('mitigator = {}(max_iter=10)'.format(AVERAGE_INDIVIDUAL_FAIRNESS_LEARNER))
     else:
         raise Exception("Unknown mitigation technique.")
 
     script_lines.append('print("Fitting mitigator")')
-    script_lines.append('mitigator.fit(X_train, y_train, sensitive_features=sensitive_features_train)')
+    fit_command = 'mitigator.fit(X_train, y_train{})'
+    extra_args = ""
+    if requires_sensitive_features:
+        extra_args = ', sensitive_features=sensitive_features_train'
+    script_lines.append(fit_command.format(extra_args))
 
-    if perf_test_configuration.mitigator == ThresholdOptimizer.__name__:
+    if perf_test_configuration.mitigator == THRESHOLD_OPTIMIZER:
+        # ThresholdOptimizer needs sensitive features at test time
         script_lines.append('mitigator.predict('
                             'X_test, '
                             'sensitive_features=sensitive_features_test, '

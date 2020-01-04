@@ -3,9 +3,9 @@
 
 import pytest
 
-from fairlearn.postprocessing import ThresholdOptimizer
-from fairlearn.reductions import ExponentiatedGradient, GridSearch, EqualizedOdds, \
-    DemographicParity
+from fairlearn.reductions import EqualizedOdds, DemographicParity, err_rate
+from constants import ADULT_UCI, COMPAS, COMMUNITIES_UCI, RBM_SVM, DECISION_TREE_CLASSIFIER, \
+    THRESHOLD_OPTIMIZER, EXPONENTIATED_GRADIENT, GRID_SEARCH, AVERAGE_INDIVIDUAL_FAIRNESS_LEARNER
 
 try:
     from tempeh.execution.azureml.workspace import get_workspace
@@ -15,22 +15,21 @@ except ImportError:
 from environment_setup import build_package
 
 
-THRESHOLD_OPTIMIZER = ThresholdOptimizer.__name__
-EXPONENTIATED_GRADIENT = ExponentiatedGradient.__name__
-GRID_SEARCH = GridSearch.__name__
-
-MEMORY = "memory"
-TIME = "time"
-
-ADULT_UCI = 'adult_uci'
-COMPAS = 'compas'
-
-RBM_SVM = 'rbm_svm'
-DECISION_TREE_CLASSIFIER = 'decision_tree_classifier'
-
-DATASETS = [ADULT_UCI, COMPAS]
-PREDICTORS = [RBM_SVM, DECISION_TREE_CLASSIFIER]
-MITIGATORS = [THRESHOLD_OPTIMIZER, EXPONENTIATED_GRADIENT, GRID_SEARCH]
+DATASETS = [
+    ADULT_UCI,
+    COMPAS,
+    COMMUNITIES_UCI
+]
+PREDICTORS = [
+    RBM_SVM,
+    DECISION_TREE_CLASSIFIER
+]
+MITIGATORS = [
+    THRESHOLD_OPTIMIZER,
+    EXPONENTIATED_GRADIENT,
+    GRID_SEARCH,
+    AVERAGE_INDIVIDUAL_FAIRNESS_LEARNER
+]
 
 
 class PerfTestConfiguration:
@@ -56,6 +55,8 @@ def get_all_perf_test_configurations():
                     disparity_metrics = [EqualizedOdds.__name__, DemographicParity.__name__]
                 elif mitigator == GRID_SEARCH:
                     disparity_metrics = [EqualizedOdds.__name__, DemographicParity.__name__]
+                elif mitigator == AVERAGE_INDIVIDUAL_FAIRNESS_LEARNER:
+                    disparity_metrics = [err_rate.__name__]
                 else:
                     raise Exception("Unknown mitigator {}".format(mitigator))
 
