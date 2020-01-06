@@ -6,11 +6,12 @@ import numpy as np
 import pandas as pd
 from fairlearn.reductions import Reduction
 from ._constants import _ACCURACY_MUL, _REGRET_CHECK_START_T, _REGRET_CHECK_INCREASE_T, \
-    _SHRINK_REGRET, _SHRINK_ETA, _MIN_T, _RUN_LP_STEP, _PRECISION, _INDENTATION
+    _SHRINK_REGRET, _SHRINK_ETA, _MIN_T, _PRECISION, _INDENTATION
 from ._lagrangian import _Lagrangian
 from ._exponentiated_gradient_result import ExponentiatedGradientResult
 from fairlearn._input_validation import _validate_and_reformat_reductions_input
 
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
@@ -52,15 +53,20 @@ class ExponentiatedGradient(Reduction):
 
     :param eta_mul: Initial setting of the learning rate
     :type eta_mul: float
+
+    :param run_lp_step: if set to True, then each step of exponentiated gradient is followed by
+        the saddle point optimization over the convex hull of classifiers returned so far.
     """
 
-    def __init__(self, estimator, constraints, eps=0.01, T=50, nu=None, eta_mul=2.0):  # noqa: D103
+    def __init__(self, estimator, constraints, eps=0.01, T=50, nu=None, eta_mul=2.0,
+                 run_lp_step=True):  # noqa: D103
         self._estimator = estimator
         self._constraints = constraints
         self._eps = eps
         self._T = T
         self._nu = nu
         self._eta_mul = eta_mul
+        self._run_lp_step = run_lp_step
         self._best_classifier = None
         self._classifiers = None
 
@@ -94,6 +100,9 @@ class ExponentiatedGradient(Reduction):
 
         last_regret_checked = _REGRET_CHECK_START_T
         last_gap = np.PINF
+
+        print(self.__dict__)
+        print(locals())
         for t in range(0, self._T):
             logger.info("...iter=%03d", t)
 
@@ -101,6 +110,8 @@ class ExponentiatedGradient(Reduction):
             lambda_vec = B * np.exp(theta) / (1 + np.exp(theta).sum())
             lambdas[t] = lambda_vec
             lambda_EG = lambdas.mean(axis=1)
+
+            print("lambda_vec {}".format(lambda_vec))
 
             # select classifier according to best_h method
             h, h_idx = lagrangian.best_h(lambda_vec)
@@ -123,7 +134,7 @@ class ExponentiatedGradient(Reduction):
             gap_EG = result_EG.gap()
             gaps_EG.append(gap_EG)
 
-            if t == 0 or not _RUN_LP_STEP:
+            if t == 0 or not self._run_lp_step:
                 gap_LP = np.PINF
             else:
                 # saddle point optimization over the convex hull of
@@ -142,7 +153,7 @@ class ExponentiatedGradient(Reduction):
             weights = Qs[t]
             classifiers = lagrangian.classifiers
             for index in classifiers.index:
-                if not weights.index.contains(index):
+                if index not in weights.index:
                     weights.at[index] = 0.0
             error_t.append(lagrangian.errors.dot(weights))
             gamma_t.append(lagrangian.gammas.dot(weights).max())

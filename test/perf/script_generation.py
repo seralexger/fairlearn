@@ -96,7 +96,7 @@ def add_mitigation(script_lines, perf_test_configuration):
                             'constraints={}())'.format(perf_test_configuration.disparity_metric))
     elif perf_test_configuration.mitigator == AVERAGE_INDIVIDUAL_FAIRNESS_LEARNER:
         requires_sensitive_features = False
-        script_lines.append('mitigator = {}(max_iter=10)'.format(AVERAGE_INDIVIDUAL_FAIRNESS_LEARNER))
+        script_lines.append('mitigator = {}(T=10)'.format(AVERAGE_INDIVIDUAL_FAIRNESS_LEARNER))
     else:
         raise Exception("Unknown mitigation technique.")
 

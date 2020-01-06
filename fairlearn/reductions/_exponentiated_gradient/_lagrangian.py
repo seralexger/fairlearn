@@ -150,6 +150,9 @@ class _Lagrangian:
         """
         # TODO if we want to work with multiple classification problems then this needs some change
         signed_weights_constraints = self.constraints.signed_weights(lambda_vec)
+        print()
+        print("lambda_signed {}".format(signed_weights_constraints))
+        print()
         signed_weights_constraints.index = signed_weights_constraints.index.droplevel(1)
         signed_weights = self.obj.signed_weights() + signed_weights_constraints
         redY = 1 * (signed_weights > 0)

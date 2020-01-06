@@ -12,6 +12,9 @@ try:
 except ImportError:
     raise Exception("fairlearn performance tests require azureml-sdk to be installed.")
 
+from tempeh import configurations as tempeh_conf
+from tempeh import constants as tempeh_const
+
 from environment_setup import build_package
 
 
@@ -47,16 +50,50 @@ class PerfTestConfiguration:
 def get_all_perf_test_configurations():
     perf_test_configurations = []
     for dataset in DATASETS:
+        dataset_class = tempeh_conf.datasets[dataset]
         for predictor in PREDICTORS:
+            predictor_class = tempeh_conf.models[predictor]
+            if not predictor_class.compatible_with_dataset(dataset_class):
+                print("Predictor {} is not compatible with dataset {}. Skipping..."
+                      .format(predictor, dataset))
+                continue
+
+            # TODO: encode mitigator compatibility somewhere
             for mitigator in MITIGATORS:
                 if mitigator == THRESHOLD_OPTIMIZER:
+                    if dataset_class.task != tempeh_const.Tasks.BINARY:
+                        print("Mitigator {} is not compatible with dataset {}. Skipping..."
+                              .format(mitigator, dataset))
+                        continue
+
                     disparity_metrics = ["equalized_odds", "demographic_parity"]
+
                 elif mitigator == EXPONENTIATED_GRADIENT:
+                    if dataset_class.task != tempeh_const.Tasks.BINARY:
+                        print("Mitigator {} is not compatible with dataset {}. Skipping..."
+                              .format(mitigator, dataset))
+                        continue
+
                     disparity_metrics = [EqualizedOdds.__name__, DemographicParity.__name__]
+
                 elif mitigator == GRID_SEARCH:
+                    if dataset_class.task != tempeh_const.Tasks.BINARY:
+                        print("Mitigator {} is not compatible with dataset {}. Skipping..."
+                              .format(mitigator, dataset))
+                        continue
+
                     disparity_metrics = [EqualizedOdds.__name__, DemographicParity.__name__]
+
                 elif mitigator == AVERAGE_INDIVIDUAL_FAIRNESS_LEARNER:
+                    if dataset_class.task != tempeh_const.Tasks.REGRESSION:
+                        print("Mitigator {} is not compatible with dataset {}. Skipping..."
+                              .format(mitigator, dataset))
+                        continue
+
+                    # We're not providing this explicitly since it's the only one that currently
+                    # works with AIF Learner, so this is just a dummy value.
                     disparity_metrics = [err_rate.__name__]
+
                 else:
                     raise Exception("Unknown mitigator {}".format(mitigator))
 

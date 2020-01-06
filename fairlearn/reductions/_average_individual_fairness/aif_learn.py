@@ -24,7 +24,7 @@ def weighted_predictions(expgrad_result, x):
     """
     Given expgrad_result, compute the weighted predictions over the dataset X
     """
-    classifiers = expgrad_result.classifiers
+    classifiers = pd.DataFrame(expgrad_result.classifiers)
     weights = expgrad_result.weights  # weights over classifiers
     weighted_preds = pd.DataFrame(columns=classifiers.columns)
     for col in classifiers.columns:
@@ -40,7 +40,7 @@ def _binarize_attribute(Y):
     if len(Y.shape) == 1 or Y.shape[1] == 1:
         _binarize_column(Y)
         return
-    
+
     for column in Y.columns:
         _binarize_column(Y[column])
 
@@ -54,14 +54,19 @@ class AverageIndividualFairnessLearner:
     """ TODO
     :param alpha: the fairness parameter, called `eps` in ExponentiatedGradient
     :type alpha: float
+    :param nu:
+    :type nu: float
+    :param T: the maximum number of iterations to run in ExponentiatedGradient
+    :type T: int
     """
-    def __init__(self, alpha=0.1, nu=0.001, max_iter=1500):
+
+    def __init__(self, alpha=0.1, nu=0.001, T=1500):
         # Constraints are fixed here and will be created in the fit method.
         # To achieve average individual fairness we need to know n which only happens in fit.
         self._estimator = RegressionLearner()
         self._alpha = alpha
         self._nu = nu
-        self._max_iter = max_iter
+        self._T = T
         self._expgrad = None
 
     def fit(self, X, y):
@@ -80,41 +85,47 @@ class AverageIndividualFairnessLearner:
             m = 1
         else:
             m = y.shape[1]
-        B = 1/self._alpha
-        T = max(1, int((B**2) * np.log(n)/self._nu**2))
+
+        y_df = pd.DataFrame(y)
 
         constraints = err_rate(range(n))
 
-        self._expgrad = ExponentiatedGradient(self._estimator, constraints=constraints, T=T,
-                                              nu=self._nu, eps=self._alpha)
+        self._expgrad = ExponentiatedGradient(self._estimator, constraints=constraints, T=self._T,
+                                              nu=self._nu, eps=self._alpha, run_lp_step=False,
+                                              eta_mul=100.0)
         self._expgrad.fit(X, y, sensitive_features_required=False)
 
         weighted_preds = weighted_predictions(self._expgrad._expgrad_result, X)
 
         # error of each problem
         err_problem = {}
-        for col in y.columns:
-            err_problem[col] = sum(np.abs(y[col] - weighted_preds[col])) / n
+        for col in y_df.columns:
+            err_problem[col] = sum(np.abs(y_df[col] - weighted_preds[col])) / n
+        print("err_problem {}".format(err_problem))
 
         # error of each individual
         err_individual = {}
         for i in range(n):
-            err_individual[i] = sum(np.abs(y.loc[i] - weighted_preds.loc[i])) / m
+            err_individual[i] = sum(np.abs(y_df.loc[i] - weighted_preds.loc[i])) / m
+        print("err_individual {}".format(err_individual))
 
-        err_matrix = (y - weighted_preds).abs()
+        err_matrix = (y_df - weighted_preds).abs()
         # overall error rate
         err = err_matrix.values.mean()
+        print("err_matrix {}".format(err_matrix))
+        print("err {}".format(err))
 
         gammahat = self._expgrad._expgrad_result.gammas[self._expgrad._expgrad_result.weights.index].dot(
             self._expgrad._expgrad_result.weights)
+        print("gammahat {}".format(gammahat))
 
         dummy_list = list(err_individual.values())
         for i in range(len(dummy_list)):
             dummy_list[i] = abs(dummy_list[i] - gammahat)
         # unfairness with respect to gammahat
-        unf = max(dummy_list)
+        unfairness = max(dummy_list)
         # unfairness: maximum disparity between individual error rates
-        unf_prime = max(err_individual.values()) - min(err_individual.values())
+        unfairness_prime = max(err_individual.values()) - min(err_individual.values())
 
         # trajectory of error
         error_t = self._expgrad._expgrad_result.error_t
@@ -130,8 +141,8 @@ class AverageIndividualFairnessLearner:
         # TODO create result object
         d = {'err_matrix': err_matrix,
              'err': err,
-             'unfairness': unf,
-             'unfairness_prime': unf_prime,
+             'unfairness': unfairness,
+             'unfairness_prime': unfairness_prime,
              'alpha': self._alpha,
              'err_problem': err_problem,
              'err_individual': err_individual,
@@ -143,8 +154,8 @@ class AverageIndividualFairnessLearner:
              'individuals': X}
         d_print = {'err': err,
                    'gammahat': gammahat,
-                   'unfairness': unf,
-                   'unfairness_prime': unf_prime,
+                   'unfairness': unfairness,
+                   'unfairness_prime': unfairness_prime,
                    'alpha': self._alpha}
         print(d_print)
 
