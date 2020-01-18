@@ -4,7 +4,7 @@
 import pytest
 
 from fairlearn.reductions import EqualizedOdds, DemographicParity, err_rate
-from constants import ADULT_UCI, COMPAS, COMMUNITIES_UCI, RBM_SVM, DECISION_TREE_CLASSIFIER, \
+from constants import ADULT_UCI, COMPAS, COMMUNITIES_UCI, RBM_SVM, DECISION_TREE_CLASSIFIER, RIDGE_REGRESSION, LOGISTIC_REGRESSION, \
     THRESHOLD_OPTIMIZER, EXPONENTIATED_GRADIENT, GRID_SEARCH, AVERAGE_INDIVIDUAL_FAIRNESS_LEARNER
 
 try:
@@ -25,7 +25,9 @@ DATASETS = [
 ]
 PREDICTORS = [
     RBM_SVM,
-    DECISION_TREE_CLASSIFIER
+    DECISION_TREE_CLASSIFIER,
+    LOGISTIC_REGRESSION,
+    RIDGE_REGRESSION
 ]
 MITIGATORS = [
     THRESHOLD_OPTIMIZER,
@@ -85,7 +87,7 @@ def get_all_perf_test_configurations():
                     disparity_metrics = [EqualizedOdds.__name__, DemographicParity.__name__]
 
                 elif mitigator == AVERAGE_INDIVIDUAL_FAIRNESS_LEARNER:
-                    if dataset_class.task != tempeh_const.Tasks.REGRESSION:
+                    if dataset_class.task != tempeh_const.Tasks.BINARY:
                         print("Mitigator {} is not compatible with dataset {}. Skipping..."
                               .format(mitigator, dataset))
                         continue

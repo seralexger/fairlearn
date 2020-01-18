@@ -6,7 +6,7 @@ class ExponentiatedGradientResult:
     """Class to hold the result of an `ExponentiatedGradient` estimator."""
 
     def __init__(self, best_classifier, best_gap, classifiers, weights, last_t, best_t,
-                 n_oracle_calls, gammas, error_t, gamma_t, weight_set):
+                 n_oracle_calls, gammas, phis, error_t, gamma_t, weight_set):
         self._best_classifier = best_classifier
         self._best_gap = best_gap
         self._classifiers = classifiers
@@ -15,6 +15,7 @@ class ExponentiatedGradientResult:
         self._best_t = best_t
         self._n_oracle_calls = n_oracle_calls
         self._gammas = gammas
+        self._phis = phis
         self._error_t = error_t
         self._gamma_t = gamma_t
         self._weight_set = weight_set
@@ -78,6 +79,11 @@ class ExponentiatedGradientResult:
     def gamma_t(self):
         """TODO"""
         return self._gamma_t
+    
+    @property
+    def phis(self):
+        """TODO"""
+        return self._phis
 
     @property
     def weight_set(self):

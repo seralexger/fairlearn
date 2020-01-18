@@ -20,3 +20,5 @@ COMMUNITIES_UCI = "communities_uci"
 
 RBM_SVM = 'rbm_svm'
 DECISION_TREE_CLASSIFIER = 'decision_tree_classifier'
+LOGISTIC_REGRESSION = 'logistic'
+RIDGE_REGRESSION = 'ridge'

@@ -92,7 +92,7 @@ class AverageIndividualFairnessLearner:
 
         self._expgrad = ExponentiatedGradient(self._estimator, constraints=constraints, T=self._T,
                                               nu=self._nu, eps=self._alpha, run_lp_step=False,
-                                              eta_mul=100.0)
+                                              eta_mul=100.0, eval_gap=False, opt_lambda=False)
         self._expgrad.fit(X, y, sensitive_features_required=False)
 
         weighted_preds = weighted_predictions(self._expgrad._expgrad_result, X)
@@ -115,7 +115,9 @@ class AverageIndividualFairnessLearner:
         print("err_matrix {}".format(err_matrix))
         print("err {}".format(err))
 
-        gammahat = self._expgrad._expgrad_result.gammas[self._expgrad._expgrad_result.weights.index].dot(
+        print('gamma/phis: {}'.format(self._expgrad._expgrad_result.phis))
+
+        gammahat = self._expgrad._expgrad_result.phis[self._expgrad._expgrad_result.weights.index].dot(
             self._expgrad._expgrad_result.weights)
         print("gammahat {}".format(gammahat))
 

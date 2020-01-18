@@ -59,7 +59,7 @@ class ExponentiatedGradient(Reduction):
     """
 
     def __init__(self, estimator, constraints, eps=0.01, T=50, nu=None, eta_mul=2.0,
-                 run_lp_step=True):  # noqa: D103
+                 run_lp_step=True, eval_gap=True, opt_lambda=True):  # noqa: D103
         self._estimator = estimator
         self._constraints = constraints
         self._eps = eps
@@ -69,6 +69,8 @@ class ExponentiatedGradient(Reduction):
         self._run_lp_step = run_lp_step
         self._best_classifier = None
         self._classifiers = None
+        self._eval_gap = eval_gap
+        self._opt_lambda = opt_lambda
 
     def fit(self, X, y, **kwargs):
         """Return a fair classifier under specified fairness constraints.
@@ -87,7 +89,7 @@ class ExponentiatedGradient(Reduction):
 
         B = 1 / self._eps
         lagrangian = _Lagrangian(X_train, A, y_train, self._estimator, self._constraints,
-                                 self._eps, B)
+                                 self._eps, B, eval_gap=self._eval_gap, opt_lambda=self._opt_lambda)
 
         theta = pd.Series(0, lagrangian.constraints.index)
         Qsum = pd.Series()
@@ -238,6 +240,7 @@ class ExponentiatedGradient(Reduction):
             best_t,
             lagrangian.n_oracle_calls,
             lagrangian.gammas,
+            lagrangian.phis,
             error_t,
             gamma_t,
             lagrangian.weight_set)

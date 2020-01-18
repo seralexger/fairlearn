@@ -36,7 +36,7 @@ class _Lagrangian:
     :type opt_lambda: bool
     """
 
-    def __init__(self, X, sensitive_features, y, estimator, constraints, eps, B, opt_lambda=True):
+    def __init__(self, X, sensitive_features, y, estimator, constraints, eps, B, opt_lambda=True, eval_gap=True):
         self.X = X
         self.constraints = constraints
         self.constraints.load_data(X, y, sensitive_features=sensitive_features)
@@ -46,10 +46,12 @@ class _Lagrangian:
         self.eps = eps
         self.B = B
         self.opt_lambda = opt_lambda
+        self._eval_gap = eval_gap
         self.hs = pd.Series()
         self.classifiers = pd.Series()
         self.errors = pd.Series()
         self.gammas = pd.DataFrame()
+        self.phis = pd.Series()  # these actually correspond to gamma_t in the paper
         self.lambdas = pd.DataFrame()
         self.n = self.X.shape[0]
         self.n_oracle_calls = 0
@@ -64,6 +66,8 @@ class _Lagrangian:
             self.labels = y.to_frame().columns
         else:
             self.labels = pd.DataFrame(y).columns
+        
+        self.y = y
 
     def _eval_from_error_gamma(self, error, gamma, lambda_vec):
         """Return the value of the Lagrangian.
@@ -92,12 +96,23 @@ class _Lagrangian:
             `gamma` is the vector of constraint violations, and `error` is the empirical error
         """
         # TODO changes required here?
+        print()
+        print('h {}'.format(h))
+        print()
+
         if callable(h):
             error = self.obj.gamma(h)[0]
             gamma = self.constraints.gamma(h)
         else:
             error = self.errors[h.index].dot(h)
             gamma = self.gammas[h.index].dot(h)
+        
+        print()
+        print('error {}'.format(error))
+        print()
+        print()
+        print('gamma {}'.format(gamma))
+        print()
         L, L_high = self._eval_from_error_gamma(error, gamma, lambda_vec)
         return L, L_high, gamma, error
 
@@ -105,15 +120,16 @@ class _Lagrangian:
         r"""Return the duality gap object for the given :math:`h` and :math:`\hat{\lambda}`."""
         L, L_high, gamma, error = self._eval(h, lambda_hat)
         result = _GapResult(L, L, L_high, gamma, error)
-        for mul in [1.0, 2.0, 5.0, 10.0]:
-            h_hat, h_hat_idx = self.best_h(mul * lambda_hat)
-            logger.debug("%smul=%.0f", _INDENTATION, mul)
-            L_low_mul, _, _, _ = self._eval(
-                pd.Series({h_hat_idx: 1.0}), lambda_hat)
-            if L_low_mul < result.L_low:
-                result.L_low = L_low_mul
-            if result.gap() > nu + _PRECISION:
-                break
+        if self._eval_gap:
+            for mul in [1.0, 2.0, 5.0, 10.0]:
+                h_hat, h_hat_idx = self.best_h(mul * lambda_hat)
+                logger.debug("%smul=%.0f", _INDENTATION, mul)
+                L_low_mul, _, _, _ = self._eval(
+                    pd.Series({h_hat_idx: 1.0}), lambda_hat)
+                if L_low_mul < result.L_low:
+                    result.L_low = L_low_mul
+                if result.gap() > nu + _PRECISION:
+                    break
         return result
 
     def solve_linprog(self, nu):
@@ -149,16 +165,27 @@ class _Lagrangian:
         the vector of Lagrange multipliers `lambda_vec`.
         """
         # TODO if we want to work with multiple classification problems then this needs some change
-        signed_weights_constraints = self.constraints.signed_weights(lambda_vec)
+        lambda_signed = self.constraints.signed_weights(lambda_vec)
         print()
-        print("lambda_signed {}".format(signed_weights_constraints))
+        print("lambda_signed {}".format(lambda_signed))
         print()
-        signed_weights_constraints.index = signed_weights_constraints.index.droplevel(1)
-        signed_weights = self.obj.signed_weights() + signed_weights_constraints
-        redY = 1 * (signed_weights > 0)
-        redW = signed_weights.abs()
-        redW = self.n * redW / redW.sum()
-        phi = 1*(np.sum(signed_weights) > 0)
+        lambda_signed.index = lambda_signed.index.droplevel(1)
+
+        if type(self.constraints) is err_rate:
+            redW = lambda_signed + 1/self.n
+            redY = self.y
+        else:
+            signed_weights = self.obj.signed_weights() + lambda_signed
+            redY = 1 * (signed_weights > 0)
+            signed_weights_abs = signed_weights.abs()
+            redW = self.n * signed_weights_abs / signed_weights_abs.sum()
+        
+        phi = 1*(np.sum(lambda_signed) > 0)
+        print()
+        print("redW {}".format(redW))
+        print()
+        print("phi {}".format(phi))
+        print()
 
         classifier = pickle.loads(self.pickled_estimator)
         classifier.fit(self.X, redY, sample_weight=redW)
@@ -194,6 +221,7 @@ class _Lagrangian:
             self.errors.at[h_idx] = h_error
             self.gammas[h_idx] = h_gamma
             self.lambdas[h_idx] = lambda_vec.copy()
+            self.phis.at[h_idx] = phi
             best_idx = h_idx
 
         return self.hs[best_idx], best_idx
