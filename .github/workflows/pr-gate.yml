@@ -1,0 +1,39 @@
+name: PR-Gate
+
+on:
+  push:
+    branches:
+    - master
+    - rolutz/github_actions
+  pull_request:
+    branches:
+    - master
+    - release/*
+    - rolutz/github_actions
+
+jobs:
+  build:
+
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-16.04, vs2017-win2016]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: Lint with flake8
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 .
+    - name: Test with pytest
+      run: |
+        pytest ./test/unit/reductions/exponentiated_gradient
