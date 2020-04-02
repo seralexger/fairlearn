@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import pickle
 import scipy.optimize as opt
+from time import time
 
 from ._constants import _PRECISION, _INDENTATION, _LINE
 
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class _Lagrangian:
-    """ Operations related to the Lagrangian
+    """Operations related to the Lagrangian.
 
     :param X: the training features
     :type X: Array
@@ -51,11 +52,12 @@ class _Lagrangian:
         self.lambdas = pd.DataFrame()
         self.n = self.X.shape[0]
         self.n_oracle_calls = 0
+        self.oracle_execution_times = []
         self.last_linprog_n_hs = 0
         self.last_linprog_result = None
 
     def _eval_from_error_gamma(self, error, gamma, lambda_vec):
-        """ Return the value of the Lagrangian.
+        """Return the value of the Lagrangian.
 
         :return: tuple `(L, L_high)` where `L` is the value of the Lagrangian, and
             `L_high` is the value of the Lagrangian under the best response of the lambda player
@@ -74,7 +76,7 @@ class _Lagrangian:
         return L, L_high
 
     def _eval(self, h, lambda_vec):
-        """ Return the value of the Lagrangian.
+        """Return the value of the Lagrangian.
 
         :return: tuple `(L, L_high, gamma, error)` where `L` is the value of the Lagrangian,
             `L_high` is the value of the Lagrangian under the best response of the lambda player,
@@ -90,13 +92,12 @@ class _Lagrangian:
         return L, L_high, gamma, error
 
     def eval_gap(self, h, lambda_hat, nu):
-        """ Return the duality gap object for the given h and lambda_hat
-        """
+        r"""Return the duality gap object for the given :math:`h` and :math:`\hat{\lambda}`."""
         L, L_high, gamma, error = self._eval(h, lambda_hat)
         result = _GapResult(L, L, L_high, gamma, error)
         for mul in [1.0, 2.0, 5.0, 10.0]:
             h_hat, h_hat_idx = self.best_h(mul * lambda_hat)
-            logger.debug("%smul=%.0f" % (_INDENTATION, mul))
+            logger.debug("%smul=%.0f", _INDENTATION, mul)
             L_low_mul, _, _, _ = self._eval(
                 pd.Series({h_hat_idx: 1.0}), lambda_hat)
             if L_low_mul < result.L_low:
@@ -132,8 +133,10 @@ class _Lagrangian:
         return self.last_linprog_result
 
     def best_h(self, lambda_vec):
-        """Return the classifier that solves the best-response problem
-        for the vector of Lagrange multipliers lambda_vec.
+        """Solve the best-response problem.
+
+        Returns the classifier that solves the best-response problem for
+        the vector of Lagrange multipliers `lambda_vec`.
         """
         signed_weights = self.obj.signed_weights() + self.constraints.signed_weights(lambda_vec)
         redY = 1 * (signed_weights > 0)
@@ -141,7 +144,9 @@ class _Lagrangian:
         redW = self.n * redW / redW.sum()
 
         classifier = pickle.loads(self.pickled_estimator)
+        oracle_call_start_time = time()
         classifier.fit(self.X, redY, sample_weight=redW)
+        self.oracle_execution_times.append(time() - oracle_call_start_time)
         self.n_oracle_calls += 1
 
         def h(X): return classifier.predict(X)
@@ -158,7 +163,7 @@ class _Lagrangian:
             best_value = np.PINF
 
         if h_value < best_value - _PRECISION:
-            logger.debug("%sbest_h: val improvement %f" % (_LINE, best_value - h_value))
+            logger.debug("%sbest_h: val improvement %f", _LINE, best_value - h_value)
             h_idx = len(self.hs)
             self.hs.at[h_idx] = h
             self.classifiers.at[h_idx] = classifier
@@ -171,8 +176,7 @@ class _Lagrangian:
 
 
 class _GapResult:
-    """ The result of a duality gap computation
-    """
+    """The result of a duality gap computation."""
 
     def __init__(self, L, L_low, L_high, gamma, error):
         self.L = L

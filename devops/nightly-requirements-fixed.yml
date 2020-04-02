@@ -1,6 +1,10 @@
 # Nightly build pipeline which uses the requirements-fixed.txt file
 # This does not run on MacOS due to issues with the pinned requirements
 
+variables:
+  FreezeArtifactStem: 'freeze'
+  FreezeFileStem: 'requirements-freeze'
+
 trigger: none # No CI build
 
 pr: none # Not for pull requests
@@ -17,20 +21,35 @@ pool:
   vmImage: 'ubuntu-latest'
 
 jobs:
-- template: all-tests-job-template.yml
+- template: templates/all-tests-job-template.yml
   parameters:
     name: Linux
     vmImage: 'ubuntu-16.04'
-    requirementsFile: 'requirements-fixed.txt'
+    pinRequirements: True
+    pyVersions: [3.5, 3.6, 3.7, 3.8]
+    freezeArtifactStem: $(FreezeArtifactStem)
+    freezeFileStem: $(FreezeFileStem)
 
-- template: all-tests-job-template.yml
+- template: templates/all-tests-job-template.yml
   parameters:
     name: Windows
     vmImage:  'vs2017-win2016'
-    requirementsFile: 'requirements-fixed.txt'
+    pinRequirements: True
+    freezeArtifactStem: $(FreezeArtifactStem)
+    freezeFileStem: $(FreezeFileStem)
 
-- template: notebook-job-template.yml
+- template: templates/notebook-job-template.yml
   parameters:
     name: LinuxNotebooks
     vmImage: 'ubuntu-16.04'
-    requirementsFile: 'requirements-fixed.txt'
+    pinRequirements: True
+    pyVersions: [3.5, 3.6, 3.7, 3.8]
+
+- template: templates/notebook-job-template.yml
+  parameters:
+    name: WindowsNotebooks
+    vmImage: 'vs2017-win2016'
+    pinRequirements: True
+    pyVersions: [3.5, 3.6, 3.7, 3.8] 
+
+- template: templates/build-widget-job-template.yml

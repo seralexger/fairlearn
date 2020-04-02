@@ -1,10 +1,14 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
 
+import numpy as np
+
 
 class GroupMetricResult:
-    """Class to hold the result of a grouped metric, produced by calling
-    the :func:`metric_by_group` function.
+    """Class to hold the result of a grouped metric.
+
+    Grouped metrics are produced by the :func:`metric_by_group`
+    function.
     """
 
     def __init__(self):
@@ -13,24 +17,10 @@ class GroupMetricResult:
         # The 'by_group' dictionary contains the metric for each group found in the
         # input
         self._by_group = {}
-        # The following two properties list the minimum and maximum metric values in
-        # the by_group dictionary
-        self._minimum = None
-        self._maximum = None
-        # The following two properties are the set of groups which have the minimum
-        # and maximum values for the metric
-        self._argmin_set = None
-        self._argmax_set = None
-        # The value of maximum - minimum
-        self._range = None
-        # The value of minimum / maximum
-        self._range_ratio = None
 
     @property
     def overall(self):
-        """Gets the value of the metric calculated
-        over the entire dataset
-        """
+        """Return the metric calculated over the entire dataset."""
         return self._overall
 
     @overall.setter
@@ -39,8 +29,8 @@ class GroupMetricResult:
 
     @property
     def by_group(self):
-        """Gets the value of the metric calculated for each sub-group
-        in the dataset.
+        """Return the metric calculated for each sub-group in the dataset.
+
         This is a dictionary whose keys are the unique members of
         the ``group_membership`` data. The corresponding values are
         the result of applying the metric function to the set of
@@ -54,72 +44,75 @@ class GroupMetricResult:
 
     @property
     def minimum(self):
-        """Gets the minimum value of the metric found in the
-        ``by_group`` dictionary, if the value is a scalar.
-        Otherwise, this will not be set.
-        """
-        return self._minimum
-
-    @minimum.setter
-    def minimum(self, value):
-        self._minimum = value
+        """Return the minimum value of the metric in the ``by_group`` dictionary."""
+        return min(self.by_group.values())
 
     @property
     def maximum(self):
-        """Gets the maxumum value of the metric found in the
-        ``by_group`` dictionary, if the values is a scalar.
-        Otherwise, this will not be set
-        """
-        return self._maximum
-
-    @maximum.setter
-    def maximum(self, value):
-        self._maximum = value
+        """Return the maximum value of the metric in the ``by_group`` dictionary."""
+        return max(self.by_group.values())
 
     @property
     def argmin_set(self):
-        """If ``minimum`` is set, this is the set of
-        groups (that is, keys in the ``by_group``
-        dictionary) corresponding to the minimum value
-        of the metric.
-        """
-        return self._argmin_set
+        """Return the set of groups corresponding to the ``minimum``.
 
-    @argmin_set.setter
-    def argmin_set(self, value):
-        self._argmin_set = value
+        This will be a set of keys to tbe ``by_group`` dictionary.
+        """
+        return set([k for k, v in self.by_group.items() if v == self.minimum])
 
     @property
     def argmax_set(self):
-        """If ``maximum`` is set, this is the set of
-        groups (that is, keys in the ``by_group``
-        dictionary) corresponding to the maximum value
-        of the metric.
+        """Return the set of groups corresponding to the ``minimum``.
+
+        This will be a set of keys to the ``by_group`` dictionary.
         """
-        return self._argmax_set
+        return set([k for k, v in self.by_group.items() if v == self.maximum])
 
-    @argmax_set.setter
-    def argmax_set(self, value):
-        self._argmax_set = value
-
-    @property
-    def range(self):
-        """If ``maximum`` and ``minimum`` are set, this
-        will be set to the difference between them
-        """
-        return self._range
-
-    @range.setter
-    def range(self, value):
-        self._range = value
+    @property  # noqa: A003
+    def range(self):  # noqa: A003
+        """Return the value of :code:`maximum-minimum`."""
+        return self.maximum - self.minimum
 
     @property
     def range_ratio(self):
-        """If ``maximum`` and ``minimum`` are set, this
-        will be set to the ratio ``minimum/maximum``
+        """Return the value of :code:`minimum/maximum`.
+
+        This is only set if the metric is a scalar.
         """
-        return self._range_ratio
+        if self.minimum < 0:
+            return np.nan
+        elif self.maximum == 0:
+            # We have min=max=0
+            return 1
+        else:
+            return self.minimum / self.maximum
 
     @range_ratio.setter
     def range_ratio(self, value):
         self._range_ratio = value
+
+    def __eq__(self, other):
+        """Compare two `GroupMetricResult` objects for equality."""
+        result = NotImplemented
+        if isinstance(other, GroupMetricResult):
+            if isinstance(self.overall, np.ndarray) and isinstance(other.overall, np.ndarray):
+                result = np.array_equal(self.overall, other.overall)
+                result = result and self.by_group.keys() == other.by_group.keys()
+                for k in self.by_group.keys():
+                    result = result and np.array_equal(self.by_group[k], other.by_group[k])
+            elif isinstance(self.overall, np.ndarray) or isinstance(other.overall, np.ndarray):
+                # Note that the previous 'and' test means that only one
+                # side of this 'or' can be true
+                result = False
+            else:
+                result = self.overall == other.overall
+                result = result and self.by_group == other.by_group
+        return result
+
+    def __ne__(self, other):
+        """Compare two `GroupMetricResult` objects for inequality."""
+        are_equal = self.__eq__(other)
+        if are_equal is NotImplemented:
+            return are_equal
+        else:
+            return not are_equal

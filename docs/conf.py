@@ -12,17 +12,23 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('.'))
+sys.path.insert(0, os.path.abspath('../'))
+print("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=")
+[print(p) for p in sys.path]
+print("=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=")
+import fairlearn  # noqa: E402
+print(fairlearn.__version__)
+print("================================")
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'fairlearn'
-copyright = '2019, Microsoft'
+copyright = '2019, Microsoft Corporation.'
 author = 'Microsoft'
 
 # The full version, including alpha/beta/rc tags
-release = '0.3.0-pre-alpha-interim'
+release = fairlearn._base_version
 
 
 # -- General configuration ---------------------------------------------------
@@ -38,7 +44,8 @@ extensions = [
 ]
 
 intersphinx_mapping = {'python3': ('https://docs.python.org/3', None),
-                       'sklearn': ('https://scikit-learn.org/stable/', None)}
+                       'sklearn': ('https://scikit-learn.org/stable/', None),
+                       'pandas': ('http://pandas.pydata.org/pandas-docs/stable/', None)}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

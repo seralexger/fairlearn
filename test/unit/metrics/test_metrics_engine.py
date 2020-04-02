@@ -2,41 +2,11 @@
 # Licensed under the MIT License.
 
 import numpy as np
-import pandas as pd
 import pytest
 
 import fairlearn.metrics as metrics
+from test.unit.input_convertors import conversions_for_1d
 
-# ===========================================================
-
-# Conversions from Python lists to our supported datatypes
-
-
-def identity(X):
-    return X
-
-
-def tondarray(X):
-    return np.asarray(X)
-
-
-def tondarray2d(X):
-    # ndarray where second dimension is of length 1
-    arr = np.asarray(X)
-    arr = np.expand_dims(arr, 1)
-    assert len(arr.shape) == 2
-    return arr
-
-
-def topandasseries(X):
-    return pd.Series(X)
-
-
-def topandasdf(X):
-    return pd.DataFrame(X)
-
-
-supported_conversions = [identity, tondarray, tondarray2d, topandasseries, topandasdf]
 
 # ===========================================================
 
@@ -54,9 +24,9 @@ def mock_func_matrix_return(y_true, y_pred):
 
 
 class TestMetricByGroup:
-    @pytest.mark.parametrize("transform_gid", supported_conversions)
-    @pytest.mark.parametrize("transform_y_p", supported_conversions)
-    @pytest.mark.parametrize("transform_y_a", supported_conversions)
+    @pytest.mark.parametrize("transform_gid", conversions_for_1d)
+    @pytest.mark.parametrize("transform_y_p", conversions_for_1d)
+    @pytest.mark.parametrize("transform_y_a", conversions_for_1d)
     def test_smoke(self, transform_y_a, transform_y_p, transform_gid):
         y_a = transform_y_a([0, 0, 1, 1, 0, 1, 1, 1])
         y_p = transform_y_p([0, 1, 1, 1, 1, 0, 0, 1])
@@ -75,9 +45,9 @@ class TestMetricByGroup:
         assert result.range == 1
         assert result.range_ratio == pytest.approx(0.6666666667)
 
-    @pytest.mark.parametrize("transform_gid", supported_conversions)
-    @pytest.mark.parametrize("transform_y_p", supported_conversions)
-    @pytest.mark.parametrize("transform_y_a", supported_conversions)
+    @pytest.mark.parametrize("transform_gid", conversions_for_1d)
+    @pytest.mark.parametrize("transform_y_p", conversions_for_1d)
+    @pytest.mark.parametrize("transform_y_a", conversions_for_1d)
     def test_string_groups(self, transform_y_a, transform_y_p, transform_gid):
         a = "ABC"
         b = "DEF"
@@ -100,9 +70,9 @@ class TestMetricByGroup:
         assert result.range == 2
         assert result.range_ratio == pytest.approx(0.33333333333333)
 
-    @pytest.mark.parametrize("transform_gid", supported_conversions)
-    @pytest.mark.parametrize("transform_y_p", supported_conversions)
-    @pytest.mark.parametrize("transform_y_a", supported_conversions)
+    @pytest.mark.parametrize("transform_gid", conversions_for_1d)
+    @pytest.mark.parametrize("transform_y_p", conversions_for_1d)
+    @pytest.mark.parametrize("transform_y_a", conversions_for_1d)
     def test_matrix_metric(self, transform_y_a, transform_y_p, transform_gid):
         a = "ABC"
         b = "DEF"
@@ -117,17 +87,35 @@ class TestMetricByGroup:
         assert np.array_equal(result.by_group[a], np.ones([3, 2]))
         assert np.array_equal(result.by_group[b], np.ones([2, 2]))
         assert np.array_equal(result.by_group[c], np.ones([3, 1]))
-        assert result.minimum is None
-        assert result.argmin_set is None
-        assert result.maximum is None
-        assert result.argmax_set is None
-        assert result.range is None
-        assert result.range_ratio is None
 
-    @pytest.mark.parametrize("transform_s_w", supported_conversions)
-    @pytest.mark.parametrize("transform_gid", supported_conversions)
-    @pytest.mark.parametrize("transform_y_p", supported_conversions)
-    @pytest.mark.parametrize("transform_y_a", supported_conversions)
+    def test_matrix_metric_other_properties(self):
+        a = "ABC"
+        b = "DEF"
+        c = "GHI"
+        y_a = [0, 0, 1, 1, 0, 1, 1, 1]
+        y_p = [0, 1, 1, 1, 1, 0, 0, 1]
+        gid = [a, a, a, b, b, c, c, c]
+
+        result = metrics.metric_by_group(mock_func_matrix_return, y_a, y_p, gid)
+
+        # Other fields should fail
+        with pytest.raises(ValueError):
+            _ = result.minimum
+        with pytest.raises(ValueError):
+            _ = result.maximum
+        with pytest.raises(ValueError):
+            _ = result.argmin_set
+        with pytest.raises(ValueError):
+            _ = result.argmax_set
+        with pytest.raises(ValueError):
+            _ = result.range
+        with pytest.raises(ValueError):
+            _ = result.range_ratio
+
+    @pytest.mark.parametrize("transform_s_w", conversions_for_1d)
+    @pytest.mark.parametrize("transform_gid", conversions_for_1d)
+    @pytest.mark.parametrize("transform_y_p", conversions_for_1d)
+    @pytest.mark.parametrize("transform_y_a", conversions_for_1d)
     def test_with_weights(self, transform_y_a, transform_y_p, transform_gid, transform_s_w):
         y_a = transform_y_a([0, 0, 1, 1, 0, 1, 1, 1])
         y_p = transform_y_p([0, 1, 1, 1, 1, 0, 0, 1])
@@ -148,8 +136,8 @@ class TestMetricByGroup:
         assert result.range == 4
         assert result.range_ratio == pytest.approx(0.33333333333333)
 
-    @pytest.mark.parametrize("transform_y_p", supported_conversions)
-    @pytest.mark.parametrize("transform_y_a", supported_conversions)
+    @pytest.mark.parametrize("transform_y_p", conversions_for_1d)
+    @pytest.mark.parametrize("transform_y_a", conversions_for_1d)
     def test_true_predict_length_mismatch(self, transform_y_a, transform_y_p):
         y_a = transform_y_a([0, 0, 1, 1, 0, 1, 1, 1])
         y_p = transform_y_p([0, 1, 1, 1, 1, 0, 0])
@@ -162,8 +150,8 @@ class TestMetricByGroup:
         expected = "Array y_pred is not the same size as y_true"
         assert exception_context.value.args[0] == expected
 
-    @pytest.mark.parametrize("transform_gid", supported_conversions)
-    @pytest.mark.parametrize("transform_y_a", supported_conversions)
+    @pytest.mark.parametrize("transform_gid", conversions_for_1d)
+    @pytest.mark.parametrize("transform_y_a", conversions_for_1d)
     def test_true_group_length_mismatch(self, transform_y_a, transform_gid):
         y_a = transform_y_a([0, 0, 1, 1, 0, 1, 1, 1])
         y_p = [0, 1, 1, 1, 1, 0, 0, 0]
@@ -176,8 +164,8 @@ class TestMetricByGroup:
         expected = "Array group_membership is not the same size as y_true"
         assert exception_context.value.args[0] == expected
 
-    @pytest.mark.parametrize("transform_s_w", supported_conversions)
-    @pytest.mark.parametrize("transform_y_a", supported_conversions)
+    @pytest.mark.parametrize("transform_s_w", conversions_for_1d)
+    @pytest.mark.parametrize("transform_y_a", conversions_for_1d)
     def test_true_weight_length_mismatch(self, transform_y_a, transform_s_w):
         y_a = transform_y_a([0, 0, 1, 1, 0, 1, 1, 1])
         y_p = [0, 1, 1, 1, 1, 0, 0, 0]
@@ -282,10 +270,10 @@ class TestMakeGroupMetric:
         assert result.range == 1
         assert result.range_ratio == pytest.approx(0.66666666667)
 
-    @pytest.mark.parametrize("transform_s_w", supported_conversions)
-    @pytest.mark.parametrize("transform_gid", supported_conversions)
-    @pytest.mark.parametrize("transform_y_p", supported_conversions)
-    @pytest.mark.parametrize("transform_y_a", supported_conversions)
+    @pytest.mark.parametrize("transform_s_w", conversions_for_1d)
+    @pytest.mark.parametrize("transform_gid", conversions_for_1d)
+    @pytest.mark.parametrize("transform_y_p", conversions_for_1d)
+    @pytest.mark.parametrize("transform_y_a", conversions_for_1d)
     def test_keys_and_weights(self, transform_y_a, transform_y_p, transform_gid, transform_s_w):
         a = "ABC"
         b = "DEF"
