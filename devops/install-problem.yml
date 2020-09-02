@@ -2,11 +2,11 @@ trigger: none
 
 pr: none
 
-schedules: none
-
 variables:
-  platforms:  { 'Linux': ubuntu-latest, 'Windows': vs2017-win2016 }
-  pyVersions: [3.6, 3.7, 3.8]
+- name: platforms
+  value: { 'Linux': 'ubuntu-latest', 'Windows': 'vs2017-win2016' }
+- name: pyVersions
+  value: [3.6, 3.7, 3.8]
 
 jobs:
   - ${{ each plat in variables.platforms }}:
