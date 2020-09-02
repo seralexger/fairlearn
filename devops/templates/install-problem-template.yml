@@ -1,7 +1,7 @@
 parameters:
   platforms: { Linux: ubuntu-latest, WindowsOld: vs2017-win2016, WindowsLatest: windows-latest }
   pyVersions: [3.6, 3.7, 3.8]
-  pipsetuptools: [ '', 'setuptools<50.0', 'setuptools<49.2']
+  pipsetuptools: [ 'setuptools>=50.0', 'setuptools<50.0', 'setuptools<49.2']
   pipnpsci: [ 'numpy==1.17.2 scipy==1.4.1', 'numpy>=1.17.2 scipy>=1.4.1']
 
 jobs:
@@ -23,4 +23,4 @@ jobs:
 
               - bash: |
                   pip install ${{npsci}} '${{sut}}'
-                displayName: Run pip command for ${{pipcmd}}
+                displayName: Run pip command for ${{npsci}} '${{sut}}'
