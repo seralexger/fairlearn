@@ -1,0 +1,24 @@
+trigger: none
+
+pr: none
+
+schedule: none
+
+variables:
+  platforms:  { Linux: ubuntu-latest, Windows: vs2017-win2016 }
+  pyVersions: [3.6, 3.7, 3.8]
+
+jobs:
+  - ${{ each plat in variables.platforms }}:
+    - ${{ each pyVer in variables.pyVersions }}:
+      - job:
+        displayName: ${{ format('{0} {1} {2}', plat.Key , testRunType, pyVer) }}
+        pool:
+          vmImage: ${{ plat.value }}
+
+        steps:
+          - task: UsePythonVersion@0
+            displayName: 'Use Python ${{pyVer}}'
+            inputs:
+              versionSpec: '${{pyVer}}' 
+              addToPath: true
