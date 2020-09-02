@@ -16,3 +16,6 @@ jobs:
             inputs:
               versionSpec: '${{pyVer}}' 
               addToPath: true
+
+          - bash: |
+              pip install numpy==1.17.2
