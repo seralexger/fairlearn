@@ -1,21 +1,24 @@
 parameters:
   platforms: { Linux: ubuntu-latest, WindowsOld: vs2017-win2016, WindowsLatest: windows-latest }
   pyVersions: [3.6, 3.7, 3.8]
+  pipCommands: [ 'numpy==1.17.2 scipy==1.4.1', 'numpy>=1.17.2 scipy>=1.4.1' , 'numpy==1.17.2 setuptools<50.0', 'numpy==1.17.2 setuptools<49.2.0']
 
 jobs:
   - ${{ each plat in parameters.platforms }}:
     - ${{ each pyVer in parameters.pyVersions }}:
-      - job:
-        displayName: ${{ format('{0} {1}', plat.Key, pyVer) }}
-        pool:
-          vmImage: ${{ plat.value }}
+      - ${{ each pipcmd in parameters.pipCommands }}:
+        - job:
+          displayName: ${{ format('{0} {1}', plat.Key, pyVer) }}
+          pool:
+            vmImage: ${{ plat.value }}
 
-        steps:
-          - task: UsePythonVersion@0
-            displayName: 'Use Python ${{pyVer}}'
-            inputs:
-              versionSpec: '${{pyVer}}' 
-              addToPath: true
+          steps:
+            - task: UsePythonVersion@0
+              displayName: 'Use Python ${{pyVer}}'
+              inputs:
+                versionSpec: '${{pyVer}}' 
+                addToPath: true
 
-          - bash: |
-              pip install numpy==1.17.2
+            - bash: |
+                pip install ${{pipcmd}}
+              displayName: Run pip command for ${{pipcmd}}
