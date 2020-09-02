@@ -24,6 +24,5 @@ jobs:
               - ${{ if eq(sut, 'True') }}:
                 - template: python-infra-upgrade-steps-template.yml
 
-              - bash: |
-                  pip install ${{npsci}} 
-                displayName: Run pip command for ${{npsci}} '${{sut}}'
+              - bash: pip install ${{npsci}} 
+                displayName: Run pip command for ${{npsci}}
