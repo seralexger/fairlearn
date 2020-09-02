@@ -2,7 +2,7 @@ parameters:
   platforms: { Linux: ubuntu-latest, WindowsOld: vs2017-win2016, WindowsLatest: windows-latest }
   pyVersions: [3.6, 3.7, 3.8]
   pipsetuptools: [ False, True ]
-  pipnpsci: [ 'numpy==1.17.2', 'numpy>=1.17.2']
+  pipnpsci: [ 'numpy==1.17.2', 'numpy>=1.17.2', 'scipy>=1.4.1', 'scipy==1.4.1' ]
 
 jobs:
   - ${{ each plat in parameters.platforms }}:
