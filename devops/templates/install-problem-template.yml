@@ -2,7 +2,7 @@ parameters:
   platforms: { Linux: ubuntu-latest, WindowsOld: vs2017-win2016, WindowsLatest: windows-latest }
   pyVersions: [3.6, 3.7, 3.8]
   pipsetuptools: [ False, True ]
-  pipnpsci: [ 'numpy==1.17.2 scipy==1.4.1', 'numpy>=1.17.2 scipy>=1.4.1']
+  pipnpsci: [ 'numpy==1.17.2', 'numpy>=1.17.2']
 
 jobs:
   - ${{ each plat in parameters.platforms }}:
@@ -10,7 +10,7 @@ jobs:
       - ${{ each npsci in parameters.pipnpsci }}:
         - ${{ each sut in parameters.pipsetuptools }}:
           - job:
-            displayName: ${{ format('{0} {1} {2}', plat.Key, pyVer, sut) }}
+            displayName: ${{ format('{0} {1} {2} {3}', plat.Key, pyVer, npsci, sut) }}
             pool:
               vmImage: ${{ plat.value }}
 
