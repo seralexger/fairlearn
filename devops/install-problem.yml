@@ -2,15 +2,10 @@ trigger: none
 
 pr: none
 
-variables:
-- name: platforms
-  value: { 'Linux': 'ubuntu-latest', 'Windows': 'vs2017-win2016' }
-- name: pyVersions
-  value: [3.6, 3.7, 3.8]
 
 jobs:
-  - ${{ each plat in variables.platforms }}:
-    - ${{ each pyVer in variables.pyVersions }}:
+  - ${{ each plat in { 'Linux': 'ubuntu-latest', 'Windows': 'vs2017-win2016' } }}:
+    - ${{ each pyVer in [3.6, 3.7, 3.8] }}:
       - job:
         displayName: ${{ format('{0} {1} {2}', plat.Key , testRunType, pyVer) }}
         pool:
