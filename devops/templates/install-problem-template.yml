@@ -8,7 +8,7 @@ jobs:
   - ${{ each plat in parameters.platforms }}:
     - ${{ each pyVer in parameters.pyVersions }}:
       - ${{ each npsci in parameters.pipnpsci }}:
-        -${{ each sut in parameters.pipsetuptools }}:
+        - ${{ each sut in parameters.pipsetuptools }}:
           - job:
             displayName: ${{ format('{0} {1}', plat.Key, pyVer) }}
             pool:
