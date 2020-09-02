@@ -2,18 +2,5 @@ trigger: none
 
 pr: none
 
-
 jobs:
-  - ${{ each plat in { 'Linux': 'ubuntu-latest', 'Windows': 'vs2017-win2016' } }}:
-    - ${{ each pyVer in [3.6, 3.7, 3.8] }}:
-      - job:
-        displayName: ${{ format('{0} {1} {2}', plat.Key , testRunType, pyVer) }}
-        pool:
-          vmImage: ${{ plat.value }}
-
-        steps:
-          - task: UsePythonVersion@0
-            displayName: 'Use Python ${{pyVer}}'
-            inputs:
-              versionSpec: '${{pyVer}}' 
-              addToPath: true
+- template: templates/install-problem-template.yml
