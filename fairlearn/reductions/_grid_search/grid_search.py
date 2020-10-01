@@ -90,6 +90,8 @@ class GridSearch(BaseEstimator, MetaEstimatorMixin):
         self.grid_limit = float(grid_limit)
         self.grid_offset = grid_offset
         self.grid = grid
+        
+        self.predictors_ = []
 
     def fit(self, X, y, **kwargs):
         """Run the grid search.
@@ -108,7 +110,7 @@ class GridSearch(BaseEstimator, MetaEstimatorMixin):
             feature used by the constraints object
         :type sensitive_features: numpy.ndarray, pandas.DataFrame, pandas.Series, or list (for now)
         """
-        self.predictors_ = []
+        
         self.lambda_vecs_ = pd.DataFrame(dtype=np.float64)
         self.objectives_ = []
         self.gammas_ = pd.DataFrame(dtype=np.float64)
